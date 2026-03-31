@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CKY Photography</title>
+    <meta
+      name="description"
+      content="A clean desktop-first 3D spiral photography gallery with a space robot guide."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/assets/index-CD4AKR14.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-WBEO314_.css">
+  </head>
+  <body class="is-intro">
+    <div class="site-shell">
+      <div class="ambient ambient--left"></div>
+      <div class="ambient ambient--right"></div>
+      <div class="grid-fade"></div>
+
+      <div class="cursor" id="cursor" aria-hidden="true">
+        <span class="cursor__ring"></span>
+        <span class="cursor__core"></span>
+        <span class="cursor__halo"></span>
+      </div>
+
+      <main class="wheel-page" id="wheelRoot">
+        <section class="wheel-stage">
+          <canvas
+            id="scene"
+            class="wheel-stage__canvas"
+            aria-label="Interactive 3D spiral photography gallery"
+          ></canvas>
+
+          <div class="hud">
+            <header class="hud__brand">
+              <p class="hud__eyebrow">CKY Photography</p>
+              <p class="hud__subtitle">
+                Scroll to send the archive drifting around the astronaut robot.
+              </p>
+            </header>
+
+            <div class="hud__speech">
+              <h1 class="hud__title" id="heroMessage" data-message="Hi there, welcome to CKY photography!"></h1>
+            </div>
+
+            <aside class="hud__month">
+              <button type="button" class="hud__month-toggle" id="monthToggle" aria-expanded="false">
+                <span class="hud__month-kicker">Month in view</span>
+                <span class="hud__month-caret">Browse</span>
+              </button>
+              <h2 class="hud__month-title" id="monthTitle">March 2026</h2>
+              <div class="hud__month-preview" id="monthPreview">
+                <img id="monthImage" class="hud__month-image" alt="" loading="lazy" />
+                <div class="hud__month-empty" id="monthEmpty">No image for this month</div>
+              </div>
+              <p class="hud__month-copy" id="monthCopy">
+                The spiral will bring each month forward as you scroll.
+              </p>
+              <div class="hud__month-menu" id="monthMenu"></div>
+            </aside>
+
+            <div class="hud__progress">
+              <div class="hud__progress-track">
+                <span class="hud__progress-fill" id="progressFill"></span>
+              </div>
+              <p class="hud__progress-label" id="progressLabel">Welcome to CKY photography</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="scroll-rail" id="scrollRail" aria-hidden="true"></div>
+      </main>
+    </div>
+
+  </body>
+</html>
