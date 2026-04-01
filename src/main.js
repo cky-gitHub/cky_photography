@@ -1,6 +1,7 @@
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
+import { MathUtils } from "three";
 import { photoManifest } from "./generated/photos.js";
 import { createGalleryScene } from "./scene.js";
 
@@ -26,23 +27,19 @@ const state = {
 const cursor = document.getElementById("cursor");
 const wheelRoot = document.getElementById("wheelRoot");
 const scrollRail = document.getElementById("scrollRail");
-const monthToggle = document.getElementById("monthToggle");
-const monthTitle = document.getElementById("monthTitle");
-const monthMenu = document.getElementById("monthMenu");
-const monthPreview = document.getElementById("monthPreview");
-const monthImage = document.getElementById("monthImage");
-const monthCopy = document.getElementById("monthCopy");
-const progressFill = document.getElementById("progressFill");
-const progressLabel = document.getElementById("progressLabel");
+const monthColumnLeft = document.getElementById("monthColumnLeft");
+const monthColumnRight = document.getElementById("monthColumnRight");
 const canvas = document.getElementById("scene");
 const heroMessage = document.getElementById("heroMessage");
+const monthRailMonths = buildMonthRailMonths(timeline.months);
+const monthRailTravel = Math.max(0, (monthRailMonths.length - 3) * 214);
 
 document.body.classList.toggle("is-touch", state.inputMode === "touch");
 scrollRail.style.height = `${Math.max(300, Math.round((timeline.maxScrollTurn + 1) * 70))}vh`;
 
 let lenis = null;
 let gallery = null;
-let monthPickerOpen = false;
+let monthPlateColumns = [];
 
 try {
   gallery = createGalleryScene({
@@ -82,11 +79,10 @@ try {
 } catch (error) {
   console.error(error);
   canvas.hidden = true;
-  monthCopy.textContent = "WebGL could not start on this device, but the archive is still loaded.";
 }
 
+renderMonthRails();
 updateUi();
-renderMonthMenu();
 playHeroTyping();
 setupScroll();
 setupCursor();
@@ -171,60 +167,123 @@ function formatMonthLabel(monthId) {
   });
 }
 
-function getActiveMonth() {
-  return timeline.months.find((month) => month.id === state.activeMonthId) ?? timeline.months[0];
-}
-
-function getDisplayPhotoForMonth(month) {
-  if (!month?.photos?.length) {
-    return null;
+function buildMonthRailMonths(months) {
+  if (!months.length) {
+    return [];
   }
 
-  return (
-    month.photos.find((photo) => photo.id === state.focusedId) ||
-    month.photos.find((photo) => photo.id === state.hoveredId) ||
-    month.photos.find((photo) => photo.id === state.frontId) ||
-    month.photos[0]
-  );
+  const filled = [];
+  const targetLength = Math.max(9, months.length * 3);
+  while (filled.length < targetLength) {
+    const month = months[filled.length % months.length];
+    filled.push({
+      key: `${month.id}-${filled.length}`,
+      month,
+    });
+  }
+  return filled;
+}
+
+function splitMonthLabel(label) {
+  const lastSpaceIndex = label.lastIndexOf(" ");
+  if (lastSpaceIndex === -1) {
+    return [label, ""];
+  }
+
+  return [label.slice(0, lastSpaceIndex), label.slice(lastSpaceIndex + 1)];
+}
+
+function buildMonthPlateMarkup(item, index) {
+  const { month, key } = item;
+  const [monthLine, yearLine] = splitMonthLabel(month.label);
+  const previewPhoto = month.photos[0] ?? null;
+  const countLabel = `${month.photos.length} frame${month.photos.length === 1 ? "" : "s"}`;
+
+  return `
+    <article class="hud__month-plate" data-month-plate-id="${month.id}" data-month-plate-key="${key}" data-month-plate-index="${index}">
+      <p class="hud__month-plate-kicker">Month in view</p>
+      <h2 class="hud__month-plate-title">
+        <span class="hud__month-plate-title-line">${monthLine}</span>
+        <span class="hud__month-plate-title-line">${yearLine}</span>
+      </h2>
+      <div class="hud__month-plate-preview">
+        ${previewPhoto ? `<img class="hud__month-plate-image" src="${previewPhoto.src}" alt="${previewPhoto.alt}" loading="lazy" />` : ""}
+      </div>
+      <p class="hud__month-plate-copy">${countLabel}</p>
+    </article>
+  `;
+}
+
+function renderMonthRails() {
+  const markup = monthRailMonths.map((month, index) => buildMonthPlateMarkup(month, index)).join("");
+  monthColumnLeft.innerHTML = markup;
+  monthColumnRight.innerHTML = markup;
+  monthPlateColumns = [
+    [...monthColumnLeft.querySelectorAll("[data-month-plate-index]")],
+    [...monthColumnRight.querySelectorAll("[data-month-plate-index]")],
+  ];
+  updateMonthRailState();
+}
+
+function getMonthRailMotion() {
+  const progress = MathUtils.clamp((state.scrollProgress - 0.2) / 0.58, 0, 1);
+  const visibility =
+    MathUtils.smoothstep(state.scrollProgress, 0.2, 0.3) *
+    (1 - MathUtils.smoothstep(state.scrollProgress, 0.6, 0.75));
+  const shift = MathUtils.lerp(400, -monthRailTravel, progress);
+
+  return { progress, visibility, shift };
+}
+
+function updateMonthRailState() {
+  monthPlateColumns.forEach((column, columnIndex) => {
+    const inwardDirection = columnIndex === 0 ? 1 : -1;
+    const viewportCenterY = window.innerHeight * 0.5;
+    let activePlate = null;
+    let activeDistance = Number.POSITIVE_INFINITY;
+
+    for (const plate of column) {
+      const rect = plate.getBoundingClientRect();
+      const centerY = rect.top + rect.height * 0.5;
+      const distance = Math.abs(centerY - viewportCenterY);
+
+      if (distance < activeDistance) {
+        activeDistance = distance;
+        activePlate = plate;
+      }
+    }
+
+    column.forEach((plate) => {
+      const rect = plate.getBoundingClientRect();
+      const centerY = rect.top + rect.height * 0.5;
+      const distance = Math.abs(centerY - viewportCenterY);
+      const normalizedDistance = Math.min(distance / Math.max(window.innerHeight * 0.64, 180), 1);
+      const opacity = MathUtils.lerp(1, 0.16, normalizedDistance);
+      const scale = MathUtils.lerp(1.06, 0.88, normalizedDistance);
+      const blur = MathUtils.lerp(0, 2.6, normalizedDistance);
+      const offsetX = inwardDirection * MathUtils.lerp(16, 0, normalizedDistance);
+
+      plate.classList.toggle("is-active", plate === activePlate);
+      plate.style.setProperty("--plate-opacity", opacity.toFixed(3));
+      plate.style.setProperty("--plate-scale", scale.toFixed(3));
+      plate.style.setProperty("--plate-offset-x", `${offsetX.toFixed(1)}px`);
+      plate.style.setProperty("--plate-blur", `${blur.toFixed(2)}px`);
+    });
+  });
 }
 
 function updateUi() {
-  const activeMonth = getActiveMonth();
-  const displayPhoto = getDisplayPhotoForMonth(activeMonth);
   const isIntro = state.scrollProgress < timeline.introThreshold;
   const introFade = 1 - Math.min(state.scrollProgress / Math.max(timeline.introThreshold, 0.001), 1);
+  const monthRailMotion = getMonthRailMotion();
 
   document.body.classList.toggle("is-intro", isIntro);
   document.body.classList.toggle("is-solo", Boolean(state.soloPhotoId));
   wheelRoot.style.setProperty("--hero-opacity", introFade.toFixed(3));
   wheelRoot.style.setProperty("--hero-translate-y", `${(1 - introFade) * -72}px`);
-
-  if (activeMonth) {
-    monthTitle.textContent = activeMonth.label;
-    monthToggle.setAttribute("aria-expanded", String(monthPickerOpen));
-    if (activeMonth.photos.length) {
-      monthCopy.textContent = `${activeMonth.photos.length} frame${activeMonth.photos.length === 1 ? "" : "s"} drifting in this month. Click any visible photo to bring it straight to center.`;
-    } else {
-      monthCopy.textContent = `No image was added in ${activeMonth.label}. The spiral keeps moving to the next available month.`;
-    }
-  }
-
-  if (displayPhoto) {
-    monthImage.src = displayPhoto.srcLarge;
-    monthImage.alt = displayPhoto.alt;
-    monthPreview.classList.add("has-image");
-  } else {
-    monthImage.removeAttribute("src");
-    monthImage.alt = "";
-    monthPreview.classList.remove("has-image");
-  }
-
-  progressFill.style.width = `${Math.round(state.scrollProgress * 100)}%`;
-  progressLabel.textContent = isIntro
-    ? "Welcome to CKY photography"
-    : `${activeMonth?.label ?? "Archive"} - ${Math.round(state.scrollProgress * 100)}% through the spiral`;
-
-  renderMonthMenu();
+  wheelRoot.style.setProperty("--month-rails-opacity", monthRailMotion.visibility.toFixed(3));
+  wheelRoot.style.setProperty("--month-rails-shift", `${monthRailMotion.shift.toFixed(1)}px`);
+  updateMonthRailState();
 }
 
 function setFocusedPhoto(photoId) {
@@ -270,10 +329,6 @@ function selectPhoto(photoId, shouldScroll) {
   state.hoveredId = null;
   clearSoloPhoto();
   setFocusedPhoto(photo.id);
-
-  if (shouldScroll) {
-    scrollToProgress(photo.targetProgress);
-  }
 }
 
 function cyclePhoto(direction) {
@@ -292,77 +347,8 @@ function cyclePhoto(direction) {
   selectPhoto(next.id, true);
 }
 
-function getMonthByProgress(progress) {
-  const scrollTurn = progress * timeline.maxScrollTurn;
-  const firstMonth = timeline.months[0] ?? null;
-  const lastMonth = timeline.months.at(-1) ?? null;
-
-  if (firstMonth && scrollTurn < firstMonth.startTurn) {
-    return firstMonth;
-  }
-
-  return timeline.months.find((month) => scrollTurn >= month.startTurn && scrollTurn < month.endTurn) ?? lastMonth;
-}
-
-function renderMonthMenu() {
-  const activeMonthId = state.activeMonthId;
-  monthMenu.innerHTML = timeline.months
-    .map((month) => {
-      const activeClass = month.id === activeMonthId ? " is-active" : "";
-      return `
-        <button type="button" class="hud__month-option${activeClass}" data-month-id="${month.id}">
-          <span class="hud__month-option-label">${month.label}</span>
-          <span class="hud__month-option-count">${month.photos.length} frame${month.photos.length === 1 ? "" : "s"}</span>
-        </button>
-      `;
-    })
-    .join("");
-}
-
-function setMonthPickerOpen(nextValue) {
-  monthPickerOpen = nextValue;
-  monthToggle.setAttribute("aria-expanded", String(nextValue));
-  monthToggle.closest(".hud__month")?.classList.toggle("is-open", nextValue);
-}
-
 function setupControls() {
-  monthToggle.addEventListener("click", () => {
-    setMonthPickerOpen(!monthPickerOpen);
-  });
-
-  monthMenu.addEventListener("click", (event) => {
-    const option = event.target.closest("[data-month-id]");
-    if (!option) {
-      return;
-    }
-
-    const month = timeline.months.find((item) => item.id === option.dataset.monthId);
-    if (!month) {
-      return;
-    }
-
-    setMonthPickerOpen(false);
-    scrollToProgress(month.targetProgress);
-  });
-
-  document.addEventListener("pointerdown", (event) => {
-    if (!monthPickerOpen) {
-      return;
-    }
-
-    if (event.target.closest(".hud__month")) {
-      return;
-    }
-
-    setMonthPickerOpen(false);
-  });
-
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && monthPickerOpen) {
-      setMonthPickerOpen(false);
-      return;
-    }
-
     if (event.key === "Escape" && state.soloPhotoId) {
       clearSoloPhoto();
       return;
@@ -404,10 +390,9 @@ function setupScroll() {
     trigger: wheelRoot,
     start: "top top",
     end: "bottom bottom",
-    scrub: reducedMotionQuery.matches ? false : 1,
+    scrub: reducedMotionQuery.matches ? false : true,
     onUpdate(self) {
       state.scrollProgress = self.progress;
-      state.activeMonthId = getMonthByProgress(self.progress)?.id ?? state.activeMonthId;
       updateUi();
       gallery?.setScrollProgress(self.progress);
     },
