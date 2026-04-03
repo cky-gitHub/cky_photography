@@ -52,6 +52,31 @@
               <div class="hud__month-column hud__month-column--left" id="monthColumnLeft"></div>
               <div class="hud__month-column hud__month-column--right" id="monthColumnRight"></div>
             </div>
+
+            <div class="month-gallery" id="monthGallery" hidden>
+              <div class="month-gallery__backdrop" data-month-gallery-close></div>
+              <section
+                class="month-gallery__panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="monthGalleryTitle"
+              >
+                <header class="month-gallery__header">
+                  <div>
+                    <p class="month-gallery__kicker">Month folder</p>
+                    <h2 class="month-gallery__title" id="monthGalleryTitle"></h2>
+                    <p class="month-gallery__count" id="monthGalleryCount"></p>
+                  </div>
+                  <button class="month-gallery__close" id="monthGalleryClose" type="button" aria-label="Close month gallery">
+                    Close
+                  </button>
+                </header>
+
+                <div class="month-gallery__content">
+                  <div class="month-gallery__grid" id="monthGalleryGrid"></div>
+                </div>
+              </section>
+            </div>
           </div>
         </section>
 

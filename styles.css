@@ -29,6 +29,12 @@ body {
   overflow-x: hidden;
 }
 
+body.is-month-gallery-open {
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
+}
+
 body.is-solo {
   background: #000;
 }
@@ -88,6 +94,10 @@ body.is-solo .hud {
   --speech-offset-y: 56px;
   --month-rails-opacity: 0;
   --month-rails-shift: 120px;
+  --month-plate-height: 388px;
+  --month-plate-gap: 100px;
+  --month-plate-step: calc(var(--month-plate-height) + var(--month-plate-gap));
+  --month-plate-half-step: calc(var(--month-plate-step) / 2);
 }
 
 .wheel-stage {
@@ -254,23 +264,35 @@ body.is-solo .hud {
 
 .hud__month-column {
   display: grid;
-  gap: 22px;
+  gap: var(--month-plate-gap);
   width: min(320px, 20vw);
-  transform: translateY(var(--month-rails-shift));
+  align-self: start;
+  align-content: start;
+  transform: translateY(calc(var(--month-rails-shift) + var(--month-column-offset, 0px)));
+  pointer-events: none;
 }
 
 .hud__month-column--left {
   justify-self: start;
   margin-left: 142px;
+  --month-column-offset: 0px;
 }
 
 .hud__month-column--right {
   justify-self: end;
   margin-right: 142px;
+  --month-column-offset: var(--month-plate-half-step);
+}
+
+.hud__month-plate-slot {
+  height: var(--month-plate-height);
 }
 
 .hud__month-plate {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   padding: 16px 16px 18px;
+  height: 100%;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 22px;
   background: linear-gradient(180deg, rgba(7, 10, 14, 0.34), rgba(7, 10, 14, 0.18));
@@ -280,12 +302,19 @@ body.is-solo .hud {
   transform: translateX(var(--plate-offset-x, 0px)) scale(var(--plate-scale, 1));
   filter: blur(var(--plate-blur, 0px));
   transform-origin: center center;
+  pointer-events: auto;
+  cursor: pointer;
   transition:
     opacity 220ms ease,
     transform 220ms ease,
     filter 220ms ease,
     border-color 220ms ease,
     background-color 220ms ease;
+}
+
+.hud__month-plate:focus-visible {
+  outline: 2px solid rgba(255, 191, 125, 0.72);
+  outline-offset: 4px;
 }
 
 .hud__month-plate.is-active {
@@ -315,7 +344,8 @@ body.is-solo .hud {
 
 .hud__month-plate-preview {
   margin-top: 0.8rem;
-  aspect-ratio: 1 / 0.72;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -330,9 +360,127 @@ body.is-solo .hud {
 
 .hud__month-plate-copy {
   margin: 0.72rem 0 0;
+  align-self: end;
   color: var(--muted);
   line-height: 1.45;
   font-size: 0.92rem;
+}
+
+.month-gallery[hidden] {
+  display: none;
+}
+
+.month-gallery {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  pointer-events: auto;
+}
+
+.month-gallery__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 5, 9, 0.84);
+  backdrop-filter: blur(12px);
+}
+
+.month-gallery__panel {
+  position: relative;
+  width: min(1120px, calc(100vw - 64px));
+  max-height: calc(100vh - 64px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(7, 10, 14, 0.96), rgba(7, 10, 14, 0.9));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+}
+
+.month-gallery__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.month-gallery__kicker {
+  margin: 0;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+}
+
+.month-gallery__title {
+  margin: 0.5rem 0 0;
+  font-family: "Syne", sans-serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.94;
+}
+
+.month-gallery__count {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+.month-gallery__close {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.month-gallery__close:hover,
+.month-gallery__close:focus-visible {
+  border-color: rgba(255, 191, 125, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.month-gallery__content {
+  overflow: auto;
+  padding: 24px;
+}
+
+.month-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 22px;
+}
+
+.month-gallery__card {
+  display: grid;
+  gap: 12px;
+}
+
+.month-gallery__image-frame {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.month-gallery__image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.month-gallery__label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
 
 .hud__month,

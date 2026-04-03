@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "description": "Desktop-first immersive scroll photography experience.",
   "scripts": {
+    "predev": "npm run prepare:photos",
+    "prebuild": "npm run prepare:photos",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

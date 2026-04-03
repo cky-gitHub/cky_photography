@@ -10,13 +10,17 @@ gsap.registerPlugin(ScrollTrigger);
 const desktopQuery = matchMedia("(min-width: 960px) and (pointer: fine)");
 const reducedMotionQuery = matchMedia("(prefers-reduced-motion: reduce)");
 
-const timeline = buildTimeline(photoManifest);
+const allPhotos = [...photoManifest];
+const ringPhotos = allPhotos.slice(0, 13);
+const timeline = buildTimeline(ringPhotos);
+const monthDirectory = buildMonthDirectory(allPhotos);
 const photoById = new Map(timeline.photos.map((photo) => [photo.id, photo]));
 
 const state = {
   hoveredId: null,
   focusedId: null,
   soloPhotoId: null,
+  openMonthId: null,
   frontId: timeline.photos[0]?.id ?? null,
   activeMonthId: timeline.months[0]?.id ?? null,
   scrollProgress: 0,
@@ -27,12 +31,19 @@ const state = {
 const cursor = document.getElementById("cursor");
 const wheelRoot = document.getElementById("wheelRoot");
 const scrollRail = document.getElementById("scrollRail");
+const monthRails = document.getElementById("monthRails");
 const monthColumnLeft = document.getElementById("monthColumnLeft");
 const monthColumnRight = document.getElementById("monthColumnRight");
+const monthGallery = document.getElementById("monthGallery");
+const monthGalleryTitle = document.getElementById("monthGalleryTitle");
+const monthGalleryCount = document.getElementById("monthGalleryCount");
+const monthGalleryGrid = document.getElementById("monthGalleryGrid");
+const monthGalleryClose = document.getElementById("monthGalleryClose");
 const canvas = document.getElementById("scene");
 const heroMessage = document.getElementById("heroMessage");
-const monthRailMonths = buildMonthRailMonths(timeline.months);
-const monthRailTravel = Math.max(0, (monthRailMonths.length - 3) * 214);
+const monthLookup = new Map(monthDirectory.map((month) => [month.id, month]));
+const monthRailColumns = buildMonthRailColumns(monthDirectory);
+const monthRailTravel = Math.max(1500, (Math.max(monthRailColumns.left.length, monthRailColumns.right.length) - 1) * 420);
 
 document.body.classList.toggle("is-touch", state.inputMode === "touch");
 scrollRail.style.height = `${Math.max(300, Math.round((timeline.maxScrollTurn + 1) * 70))}vh`;
@@ -40,6 +51,7 @@ scrollRail.style.height = `${Math.max(300, Math.round((timeline.maxScrollTurn + 
 let lenis = null;
 let gallery = null;
 let monthPlateColumns = [];
+let lockedScrollY = 0;
 
 try {
   gallery = createGalleryScene({
@@ -82,11 +94,13 @@ try {
 }
 
 renderMonthRails();
+renderMonthGallery();
 updateUi();
 playHeroTyping();
 setupScroll();
 setupCursor();
 setupControls();
+setupMonthGallery();
 
 function buildTimeline(photos) {
   const grouped = new Map();
@@ -158,6 +172,24 @@ function buildTimeline(photos) {
   };
 }
 
+function buildMonthDirectory(photos) {
+  const grouped = new Map();
+
+  for (const photo of photos) {
+    if (!grouped.has(photo.monthId)) {
+      grouped.set(photo.monthId, {
+        id: photo.monthId,
+        label: photo.monthLabel,
+        photos: [],
+      });
+    }
+
+    grouped.get(photo.monthId).photos.push(photo);
+  }
+
+  return [...grouped.values()].sort((left, right) => right.id.localeCompare(left.id));
+}
+
 function formatMonthLabel(monthId) {
   const [year, month] = monthId.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-US", {
@@ -167,21 +199,25 @@ function formatMonthLabel(monthId) {
   });
 }
 
-function buildMonthRailMonths(months) {
-  if (!months.length) {
-    return [];
-  }
+function createMonthRailItem(month) {
+  return {
+    id: month.id,
+    label: month.label,
+    photos: month.photos,
+    previewPhoto: month.photos[0] ?? null,
+    key: month.id,
+  };
+}
 
-  const filled = [];
-  const targetLength = Math.max(9, months.length * 3);
-  while (filled.length < targetLength) {
-    const month = months[filled.length % months.length];
-    filled.push({
-      key: `${month.id}-${filled.length}`,
-      month,
-    });
-  }
-  return filled;
+function buildMonthRailColumns(months) {
+  return months.reduce(
+    (columns, month, index) => {
+      const side = index % 2 === 0 ? "left" : "right";
+      columns[side].push(createMonthRailItem(month));
+      return columns;
+    },
+    { left: [], right: [] },
+  );
 }
 
 function splitMonthLabel(label) {
@@ -194,30 +230,40 @@ function splitMonthLabel(label) {
 }
 
 function buildMonthPlateMarkup(item, index) {
-  const { month, key } = item;
-  const [monthLine, yearLine] = splitMonthLabel(month.label);
-  const previewPhoto = month.photos[0] ?? null;
-  const countLabel = `${month.photos.length} frame${month.photos.length === 1 ? "" : "s"}`;
+  const [monthLine, yearLine] = splitMonthLabel(item.label);
+  const previewPhoto = item.previewPhoto;
+  const countLabel = `${item.photos.length} frame${item.photos.length === 1 ? "" : "s"}`;
 
   return `
-    <article class="hud__month-plate" data-month-plate-id="${month.id}" data-month-plate-key="${key}" data-month-plate-index="${index}">
-      <p class="hud__month-plate-kicker">Month in view</p>
-      <h2 class="hud__month-plate-title">
-        <span class="hud__month-plate-title-line">${monthLine}</span>
-        <span class="hud__month-plate-title-line">${yearLine}</span>
-      </h2>
-      <div class="hud__month-plate-preview">
-        ${previewPhoto ? `<img class="hud__month-plate-image" src="${previewPhoto.src}" alt="${previewPhoto.alt}" loading="lazy" />` : ""}
-      </div>
-      <p class="hud__month-plate-copy">${countLabel}</p>
-    </article>
+    <div
+      class="hud__month-plate-slot"
+      data-month-plate-id="${item.id}"
+      data-month-plate-key="${item.key}"
+      data-month-plate-index="${index}"
+    >
+      <article
+        class="hud__month-plate"
+        tabindex="0"
+        role="button"
+        aria-label="Open ${item.label} gallery"
+      >
+        <p class="hud__month-plate-kicker">Month in view</p>
+        <h2 class="hud__month-plate-title">
+          <span class="hud__month-plate-title-line">${monthLine}</span>
+          <span class="hud__month-plate-title-line">${yearLine}</span>
+        </h2>
+        <div class="hud__month-plate-preview">
+          ${previewPhoto ? `<img class="hud__month-plate-image" src="${previewPhoto.src}" alt="${previewPhoto.alt}" loading="lazy" />` : ""}
+        </div>
+        <p class="hud__month-plate-copy">${countLabel}</p>
+      </article>
+    </div>
   `;
 }
 
 function renderMonthRails() {
-  const markup = monthRailMonths.map((month, index) => buildMonthPlateMarkup(month, index)).join("");
-  monthColumnLeft.innerHTML = markup;
-  monthColumnRight.innerHTML = markup;
+  monthColumnLeft.innerHTML = monthRailColumns.left.map((month, index) => buildMonthPlateMarkup(month, index)).join("");
+  monthColumnRight.innerHTML = monthRailColumns.right.map((month, index) => buildMonthPlateMarkup(month, index)).join("");
   monthPlateColumns = [
     [...monthColumnLeft.querySelectorAll("[data-month-plate-index]")],
     [...monthColumnRight.querySelectorAll("[data-month-plate-index]")],
@@ -225,11 +271,80 @@ function renderMonthRails() {
   updateMonthRailState();
 }
 
+function buildMonthGalleryMarkup(photo) {
+  return `
+    <article class="month-gallery__card">
+      <div class="month-gallery__image-frame">
+        <img class="month-gallery__image" src="${photo.srcLarge}" alt="${photo.alt}" loading="lazy" decoding="async" />
+      </div>
+      <p class="month-gallery__label">${photo.label}</p>
+    </article>
+  `;
+}
+
+function renderMonthGallery() {
+  const month = state.openMonthId ? monthLookup.get(state.openMonthId) ?? null : null;
+
+  if (!month) {
+    monthGallery.hidden = true;
+    monthGalleryTitle.textContent = "";
+    monthGalleryCount.textContent = "";
+    monthGalleryGrid.innerHTML = "";
+    return;
+  }
+
+  monthGallery.hidden = false;
+  monthGalleryTitle.textContent = month.label;
+  monthGalleryCount.textContent = `${month.photos.length} photo${month.photos.length === 1 ? "" : "s"} in this folder`;
+  monthGalleryGrid.innerHTML = month.photos.map((photo) => buildMonthGalleryMarkup(photo)).join("");
+}
+
+function lockPageScroll() {
+  lockedScrollY = window.scrollY;
+  lenis?.stop();
+  document.body.classList.add("is-month-gallery-open");
+  document.body.style.top = `-${lockedScrollY}px`;
+}
+
+function unlockPageScroll() {
+  document.body.classList.remove("is-month-gallery-open");
+  document.body.style.top = "";
+  window.scrollTo(0, lockedScrollY);
+  lenis?.start();
+  ScrollTrigger.update();
+}
+
+function openMonthGallery(monthId) {
+  if (!monthLookup.has(monthId)) {
+    return;
+  }
+
+  const wasOpen = Boolean(state.openMonthId);
+  state.openMonthId = monthId;
+  renderMonthGallery();
+  if (!wasOpen) {
+    lockPageScroll();
+  }
+  updateUi();
+  monthGalleryClose?.focus({ preventScroll: true });
+}
+
+function closeMonthGallery() {
+  if (!state.openMonthId) {
+    return;
+  }
+
+  state.openMonthId = null;
+  renderMonthGallery();
+  unlockPageScroll();
+  updateUi();
+}
+
 function getMonthRailMotion() {
   const progress = MathUtils.clamp((state.scrollProgress - 0.2) / 0.58, 0, 1);
   const visibility =
     MathUtils.smoothstep(state.scrollProgress, 0.2, 0.3) *
-    (1 - MathUtils.smoothstep(state.scrollProgress, 0.6, 0.75));
+    (1 - MathUtils.smoothstep(state.scrollProgress, 0.9, 0.9));
   const shift = MathUtils.lerp(400, -monthRailTravel, progress);
 
   return { progress, visibility, shift };
@@ -257,17 +372,17 @@ function updateMonthRailState() {
       const rect = plate.getBoundingClientRect();
       const centerY = rect.top + rect.height * 0.5;
       const distance = Math.abs(centerY - viewportCenterY);
-      const normalizedDistance = Math.min(distance / Math.max(window.innerHeight * 0.64, 180), 1);
+      const normalizedDistance = Math.min(distance / Math.max(window.innerHeight * 0.84, 360), 1);
       const opacity = MathUtils.lerp(1, 0.16, normalizedDistance);
-      const scale = MathUtils.lerp(1.06, 0.88, normalizedDistance);
       const blur = MathUtils.lerp(0, 2.6, normalizedDistance);
       const offsetX = inwardDirection * MathUtils.lerp(16, 0, normalizedDistance);
+      const card = plate.querySelector(".hud__month-plate");
 
-      plate.classList.toggle("is-active", plate === activePlate);
-      plate.style.setProperty("--plate-opacity", opacity.toFixed(3));
-      plate.style.setProperty("--plate-scale", scale.toFixed(3));
-      plate.style.setProperty("--plate-offset-x", `${offsetX.toFixed(1)}px`);
-      plate.style.setProperty("--plate-blur", `${blur.toFixed(2)}px`);
+      card?.classList.toggle("is-active", plate === activePlate);
+      card?.style.setProperty("--plate-opacity", opacity.toFixed(3));
+      card?.style.setProperty("--plate-scale", "1");
+      card?.style.setProperty("--plate-offset-x", `${offsetX.toFixed(1)}px`);
+      card?.style.setProperty("--plate-blur", `${blur.toFixed(2)}px`);
     });
   });
 }
@@ -347,8 +462,43 @@ function cyclePhoto(direction) {
   selectPhoto(next.id, true);
 }
 
+function setupMonthGallery() {
+  monthRails?.addEventListener("click", (event) => {
+    const plate = event.target.closest("[data-month-plate-id]");
+    if (!plate) {
+      return;
+    }
+
+    openMonthGallery(plate.dataset.monthPlateId);
+  });
+
+  monthRails?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    const plate = event.target.closest("[data-month-plate-id]");
+    if (!plate) {
+      return;
+    }
+
+    event.preventDefault();
+    openMonthGallery(plate.dataset.monthPlateId);
+  });
+
+  monthGalleryClose?.addEventListener("click", closeMonthGallery);
+  monthGallery?.querySelector("[data-month-gallery-close]")?.addEventListener("click", closeMonthGallery);
+}
+
 function setupControls() {
   window.addEventListener("keydown", (event) => {
+    if (state.openMonthId) {
+      if (event.key === "Escape") {
+        closeMonthGallery();
+      }
+      return;
+    }
+
     if (event.key === "Escape" && state.soloPhotoId) {
       clearSoloPhoto();
       return;
