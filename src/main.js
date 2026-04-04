@@ -43,7 +43,7 @@ const canvas = document.getElementById("scene");
 const heroMessage = document.getElementById("heroMessage");
 const monthLookup = new Map(monthDirectory.map((month) => [month.id, month]));
 const monthRailColumns = buildMonthRailColumns(monthDirectory);
-const monthRailTravel = Math.max(1500, (Math.max(monthRailColumns.left.length, monthRailColumns.right.length) - 1) * 420);
+const monthRailTravel = Math.max(2200, (Math.max(monthRailColumns.left.length, monthRailColumns.right.length) - 1) * 420);
 
 document.body.classList.toggle("is-touch", state.inputMode === "touch");
 scrollRail.style.height = `${Math.max(300, Math.round((timeline.maxScrollTurn + 1) * 70))}vh`;
@@ -341,7 +341,7 @@ function closeMonthGallery() {
 }
 
 function getMonthRailMotion() {
-  const progress = MathUtils.clamp((state.scrollProgress - 0.2) / 0.58, 0, 1);
+  const progress = MathUtils.clamp((state.scrollProgress - 0.2) / 0.5, 0, 1);
   const visibility =
     MathUtils.smoothstep(state.scrollProgress, 0.2, 0.3) *
     (1 - MathUtils.smoothstep(state.scrollProgress, 0.9, 0.9));
@@ -374,13 +374,14 @@ function updateMonthRailState() {
       const distance = Math.abs(centerY - viewportCenterY);
       const normalizedDistance = Math.min(distance / Math.max(window.innerHeight * 0.84, 360), 1);
       const opacity = MathUtils.lerp(1, 0.16, normalizedDistance);
+      const scale = MathUtils.lerp(1.06, 0.88, normalizedDistance);
       const blur = MathUtils.lerp(0, 2.6, normalizedDistance);
       const offsetX = inwardDirection * MathUtils.lerp(16, 0, normalizedDistance);
       const card = plate.querySelector(".hud__month-plate");
 
       card?.classList.toggle("is-active", plate === activePlate);
       card?.style.setProperty("--plate-opacity", opacity.toFixed(3));
-      card?.style.setProperty("--plate-scale", "1");
+      card?.style.setProperty("--plate-scale", scale.toFixed(3));
       card?.style.setProperty("--plate-offset-x", `${offsetX.toFixed(1)}px`);
       card?.style.setProperty("--plate-blur", `${blur.toFixed(2)}px`);
     });

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CKY Photography</title>
+    <meta
+      name="description"
+      content="A clean desktop-first 3D spiral photography gallery with a space robot guide."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/cky_photography/assets/index-CRSYfUG0.js"></script>
+    <link rel="stylesheet" crossorigin href="/cky_photography/assets/index-CnYOBR1q.css">
+  </head>
+  <body class="is-intro">
+    <div class="site-shell">
+      <div class="ambient ambient--left"></div>
+      <div class="ambient ambient--right"></div>
+      <div class="grid-fade"></div>
+
+      <div class="cursor" id="cursor" aria-hidden="true">
+        <span class="cursor__ring"></span>
+        <span class="cursor__core"></span>
+        <span class="cursor__halo"></span>
+      </div>
+
+      <main class="wheel-page" id="wheelRoot">
+        <section class="wheel-stage">
+          <canvas
+            id="scene"
+            class="wheel-stage__canvas"
+            aria-label="Interactive 3D ring photography gallery"
+          ></canvas>
+
+          <div class="hud">
+            <header class="hud__brand">
+              <p class="hud__eyebrow">CKY Photography</p>
+              <p class="hud__subtitle">
+                Drag to spin the ring. Scroll to lift it away and send the astronaut robot falling to the next platform.
+              </p>
+            </header>
+
+            <div class="hud__speech">
+              <h1 class="hud__title" id="heroMessage" data-message="Hi there, welcome to CKY photography!"></h1>
+            </div>
+
+            <div class="hud__month-rails" id="monthRails" aria-hidden="true">
+              <div class="hud__month-column hud__month-column--left" id="monthColumnLeft"></div>
+              <div class="hud__month-column hud__month-column--right" id="monthColumnRight"></div>
+            </div>
+
+            <div class="month-gallery" id="monthGallery" hidden>
+              <div class="month-gallery__backdrop" data-month-gallery-close></div>
+              <section
+                class="month-gallery__panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="monthGalleryTitle"
+              >
+                <header class="month-gallery__header">
+                  <div>
+                    <p class="month-gallery__kicker">Month folder</p>
+                    <h2 class="month-gallery__title" id="monthGalleryTitle"></h2>
+                    <p class="month-gallery__count" id="monthGalleryCount"></p>
+                  </div>
+                  <button class="month-gallery__close" id="monthGalleryClose" type="button" aria-label="Close month gallery">
+                    Close
+                  </button>
+                </header>
+
+                <div class="month-gallery__content">
+                  <div class="month-gallery__grid" id="monthGalleryGrid"></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <div class="scroll-rail" id="scrollRail" aria-hidden="true"></div>
+      </main>
+    </div>
+
+  </body>
+</html>
