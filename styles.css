@@ -450,20 +450,23 @@ body.is-solo .hud {
 .month-gallery__content {
   overflow: auto;
   padding: 24px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .month-gallery__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 22px;
+  column-width: 260px;
+  column-gap: 18px;
 }
 
 .month-gallery__card {
-  display: grid;
-  gap: 12px;
+  break-inside: avoid;
+  margin: 0 0 18px;
 }
 
 .month-gallery__image-frame {
+  position: relative;
+  display: block;
   overflow: hidden;
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -473,14 +476,36 @@ body.is-solo .hud {
 .month-gallery__image {
   width: 100%;
   height: auto;
+  display: block;
   object-fit: cover;
 }
 
 .month-gallery__label {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
-  line-height: 1.4;
+  position: absolute;
+  inset: auto 0 0;
+  padding: 2.6rem 1rem 0.95rem;
+  color: rgba(244, 240, 234, 0.94);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  background: linear-gradient(180deg, rgba(5, 8, 12, 0), rgba(5, 8, 12, 0.88));
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.month-gallery__card:hover .month-gallery__label,
+.month-gallery__card:focus-within .month-gallery__label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .month-gallery__label {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hud__month,
@@ -705,6 +730,20 @@ body.is-intro .hud__progress {
 
 .is-touch .cursor {
   display: none;
+}
+
+@media (pointer: fine) and (min-width: 960px) {
+  body,
+  .site-shell,
+  .wheel-page,
+  .wheel-stage,
+  .wheel-stage__canvas,
+  .hud,
+  .hud * ,
+  .month-gallery,
+  .month-gallery * {
+    cursor: none !important;
+  }
 }
 
 @media (max-width: 959px) {

@@ -17,7 +17,7 @@ export function createGalleryScene({
   onHover,
   onFocus,
   onFrontPhotoChange,
-  onMonthChange,
+  onAlbumChange,
   onPhotoSelect,
   onInputMode,
 }) {
@@ -50,9 +50,6 @@ export function createGalleryScene({
   scene.add(world);
   const photosRoot = new THREE.Group();
   world.add(photosRoot);
-  const wallRoot = new THREE.Group();
-  wallRoot.position.set(0, -24, 0);
-  world.add(wallRoot);
 
   const ambient = new THREE.HemisphereLight(0xf5f8ff, 0x1d130c, 1.9);
   const keyLight = new THREE.DirectionalLight(0xffe8cf, 2.85);
@@ -63,8 +60,6 @@ export function createGalleryScene({
   jetLight.position.set(0, -0.3, -1.6);
   scene.add(ambient, keyLight, rimLight, jetLight);
 
-  let walkGroundY = -25.42;
-
   const stars = createStars(prefersCoarsePointer);
   world.add(stars);
 
@@ -73,7 +68,6 @@ export function createGalleryScene({
   const cardPitchCompensation = -0.18;
   const textureLoader = new THREE.TextureLoader();
   const photoGroups = new Map();
-  const wallGroups = new Map();
   const photoById = new Map(photos.map((photo) => [photo.id, photo]));
   const interactiveObjects = [];
 
@@ -91,61 +85,6 @@ export function createGalleryScene({
     interactiveObjects.push(card.userData.imagePlane);
   });
 
-  const wallRows = 1;
-  const wallPhotoCount = Math.max(photos.length * 4, 36);
-  const wallSpacing = 3.9;
-  const wallStartX = -10.8;
-  const wallPictureScale = 1.08;
-  const wallScatterLanes = [
-    { y: -2.8, z: 2.9, scale: 1.1, tilt: -0.05 },
-    { y: 4.1, z: 2.2, scale: 1.05, tilt: 0.04 },
-    { y: 2.4, z: -3.4, scale: 0.94, tilt: -0.03 },
-    { y: -1.4, z: -1.9, scale: 1.0, tilt: 0.02 },
-    { y: 5.0, z: -0.6, scale: 1.02, tilt: -0.05 },
-    { y: 0.5, z: 1.0, scale: 0.96, tilt: 0.03 },
-    { y: -3.6, z: -0.2, scale: 1.04, tilt: -0.02 },
-  ];
-  for (let wallIndex = 0; wallIndex < wallPhotoCount; wallIndex += 1) {
-    const photo = photos[wallIndex % Math.max(photos.length, 1)];
-    if (!photo) {
-      continue;
-    }
-
-    const card = createPhotoCard(photo, textureLoader, prefersCoarsePointer);
-    const column = Math.floor(wallIndex / wallRows);
-    const phase = wallIndex * 0.83;
-    const lane = wallScatterLanes[wallIndex % wallScatterLanes.length];
-    const x = column * wallSpacing + wallStartX + Math.sin(phase * 1.7) * 0.22;
-    const y = lane.y + Math.sin(phase * 1.13) * 0.22;
-    const z = lane.z + Math.cos(phase * 0.97) * 0.34;
-    const key = `wall-${wallIndex}`;
-
-    card.position.set(x, y, z);
-    card.scale.setScalar(wallPictureScale * lane.scale);
-    card.userData = {
-      ...card.userData,
-      photo,
-      wallKey: key,
-      frame: card.getObjectByName("frame"),
-      imagePlane: card.getObjectByName("imagePlane"),
-      basePosition: new THREE.Vector3(x, y, z),
-      baseScale: wallPictureScale * lane.scale,
-      baseTilt: lane.tilt,
-      phase,
-    };
-    card.rotation.set(0, 0, lane.tilt);
-    card.userData.imagePlane.userData.photoId = photo.id;
-    card.userData.imagePlane.userData.wallKey = key;
-    card.userData.imagePlane.userData.source = "wall";
-    wallRoot.add(card);
-    wallGroups.set(key, card);
-    interactiveObjects.push(card.userData.imagePlane);
-  }
-
-  const wallColumns = Math.ceil(wallPhotoCount / wallRows);
-  const wallTravelMax = wallColumns * wallSpacing - 2.2;
-  const wallTravelDistance = wallTravelMax * 0.52;
-
   const robot = createRobot();
   robot.position.set(0, -0.18, 0.15);
   robot.scale.setScalar(1.18);
@@ -158,23 +97,16 @@ export function createGalleryScene({
   const robotLegs = robot.userData.legs ?? [];
   const thrusters = robot.userData.thrusters ?? [];
   const eyeMeshes = robot.userData.eyeMeshes ?? [];
-  const robotFootBottomOffset = -0.8;
 
   let reduced = reducedMotion;
   let hoveredId = state.hoveredId;
   let focusedId = state.focusedId;
   let soloPhotoId = state.soloPhotoId;
   let scrollProgress = 0;
-  let activeMonthId = months[0]?.id ?? null;
+  let activeAlbumId = photos[0]?.albumId ?? null;
   let frontPhotoId = photos[0]?.id ?? null;
   let ringRotation = 0;
   let ringRotationTarget = 0;
-  let focusedWallKey = null;
-  let lastPickInfo = null;
-  let previousScrollProgress = 0;
-  let scrollMomentum = 0;
-  let reverseJetpackHold = 0;
-  let walkPhase = 0;
   const dragState = {
     active: false,
     pointerId: null,
@@ -206,16 +138,13 @@ export function createGalleryScene({
     const hits = raycaster.intersectObjects(interactiveObjects, false);
     const hit = hits[0];
     if (!hit?.object?.userData?.photoId) {
-      lastPickInfo = null;
       return null;
     }
 
-    lastPickInfo = {
+    return {
       photoId: hit.object.userData.photoId,
-      wallKey: hit.object.userData.wallKey ?? null,
       source: hit.object.userData.source ?? "ring",
     };
-    return lastPickInfo;
   }
 
   function updateHover(nextHoveredId) {
@@ -227,17 +156,11 @@ export function createGalleryScene({
 
   function focusPhoto(photoId) {
     focusedId = photoId;
-    if (lastPickInfo?.photoId === photoId && lastPickInfo?.source === "wall") {
-      focusedWallKey = lastPickInfo.wallKey;
-    } else {
-      focusedWallKey = null;
-    }
     onFocus(photoId);
   }
 
   function clearFocus() {
     focusedId = null;
-    focusedWallKey = null;
     onFocus(null);
   }
 
@@ -250,37 +173,12 @@ export function createGalleryScene({
     const elapsed = clock.elapsedTime;
     let nearestPhotoId = frontPhotoId;
     let nearestFrontness = -Infinity;
-    const launchProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.02, 0.14);
     const fallProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.1, 0.28);
     const landProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.3, 0.62);
-    const flightProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.93, 1);
-    const turnProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.93, 0.985);
-    const landingProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.56, 0.78);
-    const wallReveal = THREE.MathUtils.smoothstep(scrollProgress, 0.94, 0.995);
     const descentProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.12, 0.62);
     const ringOpacity = 1;
     const ringLift = THREE.MathUtils.smoothstep(scrollProgress, 0.02, 0.52) * 12;
-    const landingSceneY = THREE.MathUtils.lerp(-20, 0, landingProgress);
-    const flightSceneY = THREE.MathUtils.lerp(-24, -0.8, wallReveal);
-    const targetGroundY = -1.42 + landingSceneY;
     const targetRobotY = THREE.MathUtils.lerp(-0.18, -0.68, descentProgress);
-    const targetGroundTopY = targetGroundY + 0.11;
-    const targetFootClearance = targetRobotY + robotFootBottomOffset - targetGroundTopY;
-    const landedFactor = THREE.MathUtils.smoothstep(-targetFootClearance, 0.02, 0.16);
-    const effectiveTurnProgress = turnProgress * landedFactor;
-    const effectiveWalkProgress = flightProgress * landedFactor;
-    const turnTargetYaw = Math.PI / 2 * effectiveTurnProgress;
-    const scrollDelta = scrollProgress - previousScrollProgress;
-    previousScrollProgress = scrollProgress;
-    if (scrollDelta < -0.0001 && scrollProgress > 0.56) {
-      reverseJetpackHold = 0.96;
-    } else {
-      reverseJetpackHold = Math.max(0, reverseJetpackHold - delta * 2.8);
-    }
-    const effectiveTravelProgress = effectiveWalkProgress;
-    const wallTravel = effectiveTravelProgress * wallTravelDistance;
-    scrollMomentum = THREE.MathUtils.lerp(scrollMomentum, 0, reduced ? 0.2 : 0.08);
-    walkPhase += scrollDelta * 1.8;
 
     if (!reduced) {
       stars.rotation.y += delta * 0.008;
@@ -291,16 +189,6 @@ export function createGalleryScene({
       soloPhotoId ? 0 : 0.3,
       reduced ? 0.22 : 0.1,
     );
-    wallRoot.position.y = THREE.MathUtils.lerp(
-      wallRoot.position.y,
-      flightSceneY,
-      reduced ? 0.2 : 0.08,
-    );
-    walkGroundY = THREE.MathUtils.lerp(
-      walkGroundY,
-      targetGroundY,
-      reduced ? 0.2 : 0.08,
-    );
     photosRoot.position.y = THREE.MathUtils.lerp(
       photosRoot.position.y,
       ringLift,
@@ -308,14 +196,8 @@ export function createGalleryScene({
     );
     photosRoot.visible = ringOpacity > 0.02 || Boolean(soloPhotoId);
     robot.visible = !soloPhotoId;
-    wallRoot.visible = wallReveal > 0.02 || Boolean(soloPhotoId);
-    wallRoot.position.x = THREE.MathUtils.lerp(
-      wallRoot.position.x,
-      -wallTravel,
-      reduced ? 0.2 : 0.08,
-    );
 
-    const focusedCard = focusedId && !focusedWallKey ? photoGroups.get(focusedId) : null;
+    const focusedCard = focusedId ? photoGroups.get(focusedId) : null;
     if (!dragState.active && focusedCard) {
       ringRotationTarget = -focusedCard.userData.baseAngle;
     }
@@ -396,78 +278,15 @@ export function createGalleryScene({
       }
     }
 
-    for (const card of wallGroups.values()) {
-      const frame = card.userData.frame;
-      const imagePlane = card.userData.imagePlane;
-      const basePosition = card.userData.basePosition;
-      const baseScale = card.userData.baseScale ?? 1.08;
-      const baseTilt = card.userData.baseTilt ?? 0;
-      const isHovered = hoveredId === card.userData.photo.id && lastPickInfo?.wallKey === card.userData.wallKey;
-      const isFocused = focusedWallKey === card.userData.wallKey && focusedId === card.userData.photo.id;
-      const isSoloTarget = soloPhotoId === card.userData.photo.id && focusedWallKey === card.userData.wallKey;
-      const localX = basePosition.x + wallRoot.position.x;
-      const centerWeight = 1 - THREE.MathUtils.clamp(Math.abs(localX) / 7.4, 0, 1);
-      const depthWeight = THREE.MathUtils.clamp((basePosition.z + 4.5) / 8.5, 0, 1);
-      const fieldWeight = centerWeight * 0.74 + depthWeight * 0.26;
-
-      if (soloPhotoId && isSoloTarget) {
-        tempVectorA.copy(soloViewPosition);
-      } else {
-        tempVectorA.set(basePosition.x, basePosition.y, basePosition.z);
-        tempVectorA.y += Math.sin(elapsed * 0.82 + card.userData.phase) * 0.16 * effectiveWalkProgress;
-        tempVectorA.z += Math.cos(elapsed * 0.66 + card.userData.phase) * 0.12 * effectiveWalkProgress;
-        tempVectorA.z += isFocused ? 0.9 : isHovered ? 0.22 : 0;
-      }
-
-      card.position.lerp(tempVectorA, reduced ? 0.2 : 0.12);
-      const targetYaw = soloPhotoId && isSoloTarget ? 0 : 0;
-      card.rotation.y = lerpAngle(card.rotation.y, targetYaw, reduced ? 0.2 : 0.14);
-      card.rotation.x = THREE.MathUtils.lerp(card.rotation.x, soloPhotoId && isSoloTarget ? cardPitchCompensation : 0, reduced ? 0.2 : 0.16);
-      card.rotation.z = THREE.MathUtils.lerp(
-        card.rotation.z,
-        soloPhotoId && isSoloTarget ? 0 : baseTilt,
-        reduced ? 0.2 : 0.16,
-      );
-
-      const targetScale = soloPhotoId
-        ? isSoloTarget ? 2.3 : 1
-        : baseScale + fieldWeight * 0.06 + (isHovered ? 0.04 : 0) + (isFocused ? 0.16 : 0);
-      card.scale.x = THREE.MathUtils.lerp(card.scale.x || baseScale, targetScale, reduced ? 0.2 : 0.14);
-      card.scale.y = THREE.MathUtils.lerp(card.scale.y || baseScale, targetScale, reduced ? 0.2 : 0.14);
-      card.scale.z = THREE.MathUtils.lerp(card.scale.z || baseScale, targetScale, reduced ? 0.2 : 0.14);
-
-      frame.material.color.lerp(
-        tempColor.set(isFocused ? "#f6f3ef" : isHovered ? "#e7eef8" : "#ccd5e1"),
-        reduced ? 0.18 : 0.12,
-      );
-      frame.material.opacity = THREE.MathUtils.lerp(
-        frame.material.opacity,
-        soloPhotoId ? 0 : 0.12 + (isFocused ? 0.16 : isHovered ? 0.08 : 0),
-        reduced ? 0.18 : 0.12,
-      );
-      imagePlane.material.opacity = THREE.MathUtils.lerp(
-        imagePlane.material.opacity,
-        soloPhotoId ? (isSoloTarget ? 1 : 0) : 1,
-        reduced ? 0.22 : 0.12,
-      );
-
-      card.visible = true;
-
-      if (!soloPhotoId && effectiveWalkProgress > 0.05 && fieldWeight > nearestFrontness) {
-        nearestFrontness = fieldWeight;
-        nearestPhotoId = card.userData.photo.id;
-      }
-    }
-
     if (nearestPhotoId && nearestPhotoId !== frontPhotoId) {
       frontPhotoId = nearestPhotoId;
       onFrontPhotoChange(frontPhotoId);
     }
 
-    const displayMonthId = photoById.get(focusedId || frontPhotoId)?.monthId ?? activeMonthId;
-    if (displayMonthId && displayMonthId !== activeMonthId) {
-      activeMonthId = displayMonthId;
-      onMonthChange(activeMonthId);
+    const displayAlbumId = photoById.get(focusedId || frontPhotoId)?.albumId ?? activeAlbumId;
+    if (displayAlbumId && displayAlbumId !== activeAlbumId) {
+      activeAlbumId = displayAlbumId;
+      onAlbumChange(activeAlbumId);
     }
 
     const localPointer = robot.worldToLocal(
@@ -482,62 +301,46 @@ export function createGalleryScene({
     const pitch = Math.atan2(localPointer.y - 1.8, Math.max(localPointer.z + 1.7, 0.45));
     const limitedYaw = THREE.MathUtils.clamp(yaw * 0.98, -maxHeadTurn, maxHeadTurn);
     const limitedPitch = THREE.MathUtils.clamp(-pitch * 0.38, -maxHeadTurn, maxHeadTurn);
-    const walkingLook = effectiveTurnProgress > 0.06;
-    const headYawTarget = walkingLook
-      ? THREE.MathUtils.clamp(limitedYaw, 0, THREE.MathUtils.degToRad(45))
-      : limitedYaw;
-    const headPitchTarget = walkingLook
-      ? THREE.MathUtils.clamp(limitedPitch, -THREE.MathUtils.degToRad(10), THREE.MathUtils.degToRad(10))
-      : limitedPitch;
-    robotHead.rotation.y = THREE.MathUtils.lerp(robotHead.rotation.y, headYawTarget, reduced ? 0.18 : 0.1);
-    robotHead.rotation.x = THREE.MathUtils.lerp(robotHead.rotation.x, headPitchTarget, reduced ? 0.18 : 0.1);
-    robotBody.rotation.y = THREE.MathUtils.lerp(robotBody.rotation.y, walkingLook ? 0 : yaw * 0.18, reduced ? 0.16 : 0.08);
+    robotHead.rotation.y = THREE.MathUtils.lerp(robotHead.rotation.y, limitedYaw, reduced ? 0.18 : 0.1);
+    robotHead.rotation.x = THREE.MathUtils.lerp(robotHead.rotation.x, limitedPitch, reduced ? 0.18 : 0.1);
+    robotBody.rotation.y = THREE.MathUtils.lerp(robotBody.rotation.y, yaw * 0.18, reduced ? 0.16 : 0.08);
 
-    const walkCycle = Math.sin(walkPhase) * scrollMomentum;
-    const flightPose = effectiveWalkProgress;
-    const reverseFlightAssist =
-      reverseJetpackHold * THREE.MathUtils.smoothstep(scrollProgress, 0.56, 0.96);
     const armRaise = fallProgress * (1 - landProgress);
     for (const arm of robotArms) {
       const side = arm.userData.side ?? 1;
       arm.rotation.z = THREE.MathUtils.lerp(
         arm.rotation.z,
-        side * (0.12 + 0.96 * armRaise + 0.26 * flightPose + 0.14 * walkCycle),
+        side * (0.12 + 0.96 * armRaise),
         reduced ? 0.22 : 0.12,
       );
       arm.rotation.x = THREE.MathUtils.lerp(
         arm.rotation.x,
-        -0.16 - 0.18 * armRaise + 0.12 * flightPose,
+        -0.16 - 0.18 * armRaise,
         reduced ? 0.22 : 0.12,
       );
     }
 
     for (const leg of robotLegs) {
-      const side = leg.userData.side ?? 1;
       leg.rotation.x = THREE.MathUtils.lerp(
         leg.rotation.x,
-        side * 1.8 * walkCycle - 0.34 * flightPose,
+        0,
         reduced ? 0.18 : 0.12,
       );
     }
 
     if (!reduced) {
       const hoverBounce = Math.sin(elapsed * 1.55) * 0.07 * (1 - fallProgress);
-      const flightHover = Math.sin(elapsed * 4.6) * 0.08 * flightPose;
-      robot.position.y = targetRobotY + hoverBounce + flightPose * 0.92 + flightHover;
+      robot.position.y = targetRobotY + hoverBounce;
       robot.position.x = 0;
-      robot.rotation.y = THREE.MathUtils.lerp(robot.rotation.y, turnTargetYaw, 0.045);
-      robot.rotation.z = THREE.MathUtils.lerp(robot.rotation.z, -0.08 * flightPose, 0.08);
+      robot.rotation.y = THREE.MathUtils.lerp(robot.rotation.y, 0, 0.08);
+      robot.rotation.z = THREE.MathUtils.lerp(robot.rotation.z, 0, 0.08);
       robot.rotation.x = THREE.MathUtils.lerp(robot.rotation.x, 0, 0.08);
-      const groundTopY = walkGroundY + 0.11;
-      const robotFootBottomY = robot.position.y + robotFootBottomOffset;
-      const feetClearance = robotFootBottomY - groundTopY;
       const jetpackPower = 1;
       jetLight.intensity = (2.6 + (Math.sin(elapsed * 9) * 0.5 + 0.5) * 1.5) * jetpackPower;
 
       for (const thruster of thrusters) {
         const flicker = Math.sin(elapsed * 14 + thruster.userData.phase) * 0.5 + 0.5;
-        const pulse = (0.96 + flicker * 0.86 + flightPose * 0.48) * jetpackPower;
+        const pulse = (0.96 + flicker * 0.86) * jetpackPower;
         const sway = Math.sin(elapsed * 9.4 + thruster.userData.phase) * 0.06 * jetpackPower;
         thruster.scale.set(1.02 + flicker * 0.08, pulse, 1.02);
         thruster.rotation.z = sway;
@@ -550,18 +353,15 @@ export function createGalleryScene({
         robotEyes.material.emissiveIntensity = 1 + (Math.sin(elapsed * 3.4) * 0.5 + 0.5) * 0.24;
       }
     } else {
-      robot.position.y = targetRobotY + flightPose * 0.92;
+      robot.position.y = targetRobotY;
       robot.position.x = 0;
-      robot.rotation.y = turnTargetYaw;
-      robot.rotation.z = -0.08 * flightPose;
+      robot.rotation.y = 0;
+      robot.rotation.z = 0;
       robot.rotation.x = 0;
-      const groundTopY = walkGroundY + 0.11;
-      const robotFootBottomY = robot.position.y + robotFootBottomOffset;
-      const feetClearance = robotFootBottomY - groundTopY;
       const jetpackPower = 1;
       jetLight.intensity = 3 * jetpackPower;
       for (const thruster of thrusters) {
-        thruster.scale.set(1.06, Math.max((jetpackPower * 1.5) + flightPose * 0.5, 0.001), 1.02);
+        thruster.scale.set(1.06, Math.max(jetpackPower * 1.5, 0.001), 1.02);
         thruster.rotation.z = 0;
         thruster.position.y = -1.14;
         thruster.position.z = -0.1;
@@ -666,8 +466,8 @@ export function createGalleryScene({
       }
       focusedId = null;
       ringRotationTarget = -photoGroups.get(targetPhoto.id).userData.baseAngle;
-      activeMonthId = monthId;
-      onMonthChange(monthId);
+      activeAlbumId = targetPhoto.albumId ?? activeAlbumId;
+      onAlbumChange(activeAlbumId);
     },
     setSoloPhoto(photoId) {
       soloPhotoId = photoId;
@@ -1089,9 +889,6 @@ function createRobot() {
 
 function createArm(suitMaterial, trimMaterial, copperMaterial) {
   const group = new THREE.Group();
-
-  const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 14), trimMaterial);
-  group.add(shoulder);
 
   const upper = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.72, 0.2, 4, 0.09), suitMaterial);
   upper.position.set(0.2, -0.28, 0.03);

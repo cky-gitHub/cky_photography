@@ -12,6 +12,7 @@ const manifestFile = path.join(root, "src", "generated", "photos.js");
 const smallMaxEdge = 1600;
 const largeMaxEdge = 2600;
 const jpegQuality = 84;
+const supportedImagePattern = /\.(jpe?g|png|webp)$/i;
 
 function toSlug(fileName) {
   return path
@@ -23,6 +24,23 @@ function toSlug(fileName) {
 
 function toLabel(index, orientation) {
   return `Frame ${String(index + 1).padStart(2, "0")} - ${orientation === "landscape" ? "Horizon" : "Portrait"}`;
+}
+
+function isCoverFile(fileName) {
+  return path.basename(fileName, path.extname(fileName)).toLowerCase() === "cover";
+}
+
+function toTitleCase(value) {
+  return value.replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+}
+
+function toAlbumLabel(folderName) {
+  const cleaned = folderName
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned ? toTitleCase(cleaned) : "Untitled Album";
 }
 
 function parseCapturedDate(fileName) {
@@ -56,21 +74,62 @@ async function ensureDir(target) {
   await fs.mkdir(target, { recursive: true });
 }
 
+async function collectSourcePhotos() {
+  const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+  const sources = [];
+
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const albumDir = path.join(sourceDir, entry.name);
+      const albumEntries = await fs.readdir(albumDir, { withFileTypes: true });
+      const albumId = toSlug(entry.name) || "album";
+      const albumLabel = toAlbumLabel(entry.name);
+
+      for (const albumEntry of albumEntries) {
+        if (!albumEntry.isFile() || !supportedImagePattern.test(albumEntry.name)) {
+          continue;
+        }
+
+        sources.push({
+          file: albumEntry.name,
+          absolutePath: path.join(albumDir, albumEntry.name),
+          albumId,
+          albumLabel,
+        });
+      }
+
+      continue;
+    }
+
+    if (!entry.isFile() || !supportedImagePattern.test(entry.name)) {
+      continue;
+    }
+
+    sources.push({
+      file: entry.name,
+      absolutePath: path.join(sourceDir, entry.name),
+      albumId: "unsorted",
+      albumLabel: "Unsorted",
+    });
+  }
+
+  return sources;
+}
+
 async function prepare() {
   await ensureDir(smallDir);
   await ensureDir(largeDir);
   await ensureDir(path.dirname(manifestFile));
 
-  const files = (await fs.readdir(sourceDir))
-    .filter((file) => /\.(jpe?g|png|webp)$/i.test(file));
+  const sourcePhotos = await collectSourcePhotos();
 
   const preparedPhotos = [];
 
-  for (const file of files) {
-    const absolutePath = path.join(sourceDir, file);
+  for (const sourcePhoto of sourcePhotos) {
+    const { file, absolutePath, albumId, albumLabel } = sourcePhoto;
     const stats = await fs.stat(absolutePath);
     const capturedDate = parseCapturedDate(file) ?? stats.mtime;
-    const slug = toSlug(file);
+    const slug = `${albumId}-${toSlug(file)}`;
     const metadata = await sharp(absolutePath).metadata();
     const orientation = metadata.width >= metadata.height ? "landscape" : "portrait";
     const smallName = `${slug}.jpg`;
@@ -102,6 +161,10 @@ async function prepare() {
       orientation,
       monthId: monthParts.monthId,
       monthLabel: monthParts.monthLabel,
+      albumId,
+      albumLabel,
+      isBest: albumId === "best",
+      isCover: isCoverFile(file),
     });
   }
 
@@ -116,7 +179,7 @@ async function prepare() {
     label: toLabel(index, photo.orientation),
   }));
 
-  const contents = `/** @typedef {{ id: string, order: number, capturedAt: string, src: string, srcLarge: string, width: number, height: number, aspect: number, orientation: "portrait" | "landscape", monthId: string, monthLabel: string, alt: string, label: string }} PhotoAsset */\n\n/** @type {PhotoAsset[]} */\nexport const photoManifest = ${JSON.stringify(manifest, null, 2)};\n`;
+  const contents = `/** @typedef {{ id: string, order: number, capturedAt: string, src: string, srcLarge: string, width: number, height: number, aspect: number, orientation: "portrait" | "landscape", monthId: string, monthLabel: string, albumId: string, albumLabel: string, isBest: boolean, isCover: boolean, alt: string, label: string }} PhotoAsset */\n\n/** @type {PhotoAsset[]} */\nexport const photoManifest = ${JSON.stringify(manifest, null, 2)};\n`;
   await fs.writeFile(manifestFile, contents, "utf8");
 
   console.log(`Prepared ${manifest.length} photos into public/photos and updated src/generated/photos.js`);
