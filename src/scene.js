@@ -42,7 +42,7 @@ export function createGalleryScene({
   const pointerWorld = new THREE.Vector3();
   const cameraRest = new THREE.Vector3(0, 5, 20);
   const cameraLookAt = new THREE.Vector3(0, 1.00, 0);
-  const soloViewPosition = new THREE.Vector3(0, 2.15, 5.4);
+  const soloViewPosition = new THREE.Vector3(0, 2.55, 6.1);
   const pointerOffset = new THREE.Vector3();
   const clock = new THREE.Clock();
 
@@ -107,6 +107,7 @@ export function createGalleryScene({
   let frontPhotoId = photos[0]?.id ?? null;
   let ringRotation = 0;
   let ringRotationTarget = 0;
+  const ringAutoSpinSpeed = -0.04;
   const dragState = {
     active: false,
     pointerId: null,
@@ -200,6 +201,8 @@ export function createGalleryScene({
     const focusedCard = focusedId ? photoGroups.get(focusedId) : null;
     if (!dragState.active && focusedCard) {
       ringRotationTarget = -focusedCard.userData.baseAngle;
+    } else if (!dragState.active) {
+      ringRotationTarget -= delta * ringAutoSpinSpeed;
     }
     ringRotation = lerpAngle(ringRotation, ringRotationTarget, reduced ? 0.22 : 0.12);
 
