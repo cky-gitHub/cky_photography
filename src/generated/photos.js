@@ -3,42 +3,137 @@
 /** @type {PhotoAsset[]} */
 export const photoManifest = [
   {
+    "id": "netherlands-snapchat-1933699249",
+    "capturedAt": "2026-05-24T19:19:59.978Z",
+    "src": "photos/small/netherlands-snapchat-1933699249.jpg",
+    "srcLarge": "photos/large/netherlands-snapchat-1933699249-large.jpg",
+    "width": 1512,
+    "height": 2688,
+    "aspect": 0.5625,
+    "orientation": "portrait",
+    "monthId": "2026-05",
+    "monthLabel": "May 2026",
+    "albumId": "netherlands",
+    "albumLabel": "Netherlands",
+    "isBest": false,
+    "isCover": false,
+    "order": 0,
+    "alt": "Photograph 01, portrait composition from the Project Photography collection.",
+    "label": "Frame 01 - Portrait"
+  },
+  {
+    "id": "netherlands-snapchat-1542994089-2",
+    "capturedAt": "2026-05-24T19:19:59.960Z",
+    "src": "photos/small/netherlands-snapchat-1542994089-2.jpg",
+    "srcLarge": "photos/large/netherlands-snapchat-1542994089-2-large.jpg",
+    "width": 1361,
+    "height": 2419,
+    "aspect": 0.5626,
+    "orientation": "portrait",
+    "monthId": "2026-05",
+    "monthLabel": "May 2026",
+    "albumId": "netherlands",
+    "albumLabel": "Netherlands",
+    "isBest": false,
+    "isCover": false,
+    "order": 1,
+    "alt": "Photograph 02, portrait composition from the Project Photography collection.",
+    "label": "Frame 02 - Portrait"
+  },
+  {
     "id": "netherlands-cover",
-    "capturedAt": "2026-04-19T15:57:49.452Z",
+    "capturedAt": "2026-05-24T19:19:59.442Z",
     "src": "photos/small/netherlands-cover.jpg",
     "srcLarge": "photos/large/netherlands-cover-large.jpg",
     "width": 2765,
     "height": 3672,
     "aspect": 0.753,
     "orientation": "portrait",
-    "monthId": "2026-04",
-    "monthLabel": "April 2026",
+    "monthId": "2026-05",
+    "monthLabel": "May 2026",
     "albumId": "netherlands",
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": true,
-    "order": 0,
-    "alt": "Photograph 01, portrait composition from the Project Photography collection.",
-    "label": "Frame 01 - Portrait"
+    "order": 2,
+    "alt": "Photograph 03, portrait composition from the Project Photography collection.",
+    "label": "Frame 03 - Portrait"
+  },
+  {
+    "id": "morrocco-cover",
+    "capturedAt": "2026-05-24T19:19:59.413Z",
+    "src": "photos/small/morrocco-cover.jpg",
+    "srcLarge": "photos/large/morrocco-cover-large.jpg",
+    "width": 3648,
+    "height": 4864,
+    "aspect": 0.75,
+    "orientation": "portrait",
+    "monthId": "2026-05",
+    "monthLabel": "May 2026",
+    "albumId": "morrocco",
+    "albumLabel": "Morrocco",
+    "isBest": false,
+    "isCover": true,
+    "order": 3,
+    "alt": "Photograph 04, portrait composition from the Project Photography collection.",
+    "label": "Frame 04 - Portrait"
   },
   {
     "id": "kazakhstan-cover",
-    "capturedAt": "2026-04-19T15:44:14.101Z",
+    "capturedAt": "2026-05-24T19:19:58.234Z",
     "src": "photos/small/kazakhstan-cover.jpg",
     "srcLarge": "photos/large/kazakhstan-cover-large.jpg",
     "width": 8160,
     "height": 4066,
     "aspect": 2.0069,
     "orientation": "landscape",
-    "monthId": "2026-04",
-    "monthLabel": "April 2026",
+    "monthId": "2026-05",
+    "monthLabel": "May 2026",
     "albumId": "kazakhstan",
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": true,
-    "order": 1,
-    "alt": "Photograph 02, landscape composition from the Project Photography collection.",
-    "label": "Frame 02 - Horizon"
+    "order": 4,
+    "alt": "Photograph 05, landscape composition from the Project Photography collection.",
+    "label": "Frame 05 - Horizon"
+  },
+  {
+    "id": "germany-snapchat-1724593377",
+    "capturedAt": "2026-05-24T19:19:58.198Z",
+    "src": "photos/small/germany-snapchat-1724593377.jpg",
+    "srcLarge": "photos/large/germany-snapchat-1724593377-large.jpg",
+    "width": 1512,
+    "height": 2688,
+    "aspect": 0.5625,
+    "orientation": "portrait",
+    "monthId": "2026-05",
+    "monthLabel": "May 2026",
+    "albumId": "germany",
+    "albumLabel": "Germany",
+    "isBest": false,
+    "isCover": false,
+    "order": 5,
+    "alt": "Photograph 06, portrait composition from the Project Photography collection.",
+    "label": "Frame 06 - Portrait"
+  },
+  {
+    "id": "germany-cover",
+    "capturedAt": "2026-05-24T19:19:58.183Z",
+    "src": "photos/small/germany-cover.jpg",
+    "srcLarge": "photos/large/germany-cover-large.jpg",
+    "width": 1600,
+    "height": 1200,
+    "aspect": 1.3333,
+    "orientation": "landscape",
+    "monthId": "2026-05",
+    "monthLabel": "May 2026",
+    "albumId": "germany",
+    "albumLabel": "Germany",
+    "isBest": false,
+    "isCover": true,
+    "order": 6,
+    "alt": "Photograph 07, landscape composition from the Project Photography collection.",
+    "label": "Frame 07 - Horizon"
   },
   {
     "id": "kazakhstan-pxl-20260415-093423415",
@@ -55,9 +150,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 2,
-    "alt": "Photograph 03, portrait composition from the Project Photography collection.",
-    "label": "Frame 03 - Portrait"
+    "order": 7,
+    "alt": "Photograph 08, portrait composition from the Project Photography collection.",
+    "label": "Frame 08 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260415-052100775",
@@ -74,9 +169,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 3,
-    "alt": "Photograph 04, portrait composition from the Project Photography collection.",
-    "label": "Frame 04 - Portrait"
+    "order": 8,
+    "alt": "Photograph 09, portrait composition from the Project Photography collection.",
+    "label": "Frame 09 - Portrait"
   },
   {
     "id": "best-pxl-20260414-125942655",
@@ -93,9 +188,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 4,
-    "alt": "Photograph 05, portrait composition from the Project Photography collection.",
-    "label": "Frame 05 - Portrait"
+    "order": 9,
+    "alt": "Photograph 10, portrait composition from the Project Photography collection.",
+    "label": "Frame 10 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260414-125942655",
@@ -112,9 +207,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 5,
-    "alt": "Photograph 06, portrait composition from the Project Photography collection.",
-    "label": "Frame 06 - Portrait"
+    "order": 10,
+    "alt": "Photograph 11, portrait composition from the Project Photography collection.",
+    "label": "Frame 11 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260414-123100564-pano-2",
@@ -131,9 +226,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 6,
-    "alt": "Photograph 07, landscape composition from the Project Photography collection.",
-    "label": "Frame 07 - Horizon"
+    "order": 11,
+    "alt": "Photograph 12, landscape composition from the Project Photography collection.",
+    "label": "Frame 12 - Horizon"
   },
   {
     "id": "best-pxl-20260414-120522254",
@@ -150,9 +245,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 7,
-    "alt": "Photograph 08, portrait composition from the Project Photography collection.",
-    "label": "Frame 08 - Portrait"
+    "order": 12,
+    "alt": "Photograph 13, portrait composition from the Project Photography collection.",
+    "label": "Frame 13 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260414-120522254",
@@ -169,9 +264,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 8,
-    "alt": "Photograph 09, portrait composition from the Project Photography collection.",
-    "label": "Frame 09 - Portrait"
+    "order": 13,
+    "alt": "Photograph 14, portrait composition from the Project Photography collection.",
+    "label": "Frame 14 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260414-115410754",
@@ -188,9 +283,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 9,
-    "alt": "Photograph 10, portrait composition from the Project Photography collection.",
-    "label": "Frame 10 - Portrait"
+    "order": 14,
+    "alt": "Photograph 15, portrait composition from the Project Photography collection.",
+    "label": "Frame 15 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260414-101530511",
@@ -207,9 +302,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 10,
-    "alt": "Photograph 11, landscape composition from the Project Photography collection.",
-    "label": "Frame 11 - Horizon"
+    "order": 15,
+    "alt": "Photograph 16, landscape composition from the Project Photography collection.",
+    "label": "Frame 16 - Horizon"
   },
   {
     "id": "kazakhstan-original-7236e813-c015-4e3f-aacc-f8f8f541669a-pxl-20260414-064523702",
@@ -226,9 +321,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 11,
-    "alt": "Photograph 12, landscape composition from the Project Photography collection.",
-    "label": "Frame 12 - Horizon"
+    "order": 16,
+    "alt": "Photograph 17, landscape composition from the Project Photography collection.",
+    "label": "Frame 17 - Horizon"
   },
   {
     "id": "kazakhstan-pxl-20260413-131011500-pano",
@@ -245,9 +340,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 12,
-    "alt": "Photograph 13, landscape composition from the Project Photography collection.",
-    "label": "Frame 13 - Horizon"
+    "order": 17,
+    "alt": "Photograph 18, landscape composition from the Project Photography collection.",
+    "label": "Frame 18 - Horizon"
   },
   {
     "id": "kazakhstan-pxl-20260413-130917649",
@@ -264,9 +359,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 13,
-    "alt": "Photograph 14, landscape composition from the Project Photography collection.",
-    "label": "Frame 14 - Horizon"
+    "order": 18,
+    "alt": "Photograph 19, landscape composition from the Project Photography collection.",
+    "label": "Frame 19 - Horizon"
   },
   {
     "id": "best-pxl-20260413-125444353",
@@ -283,9 +378,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 14,
-    "alt": "Photograph 15, portrait composition from the Project Photography collection.",
-    "label": "Frame 15 - Portrait"
+    "order": 19,
+    "alt": "Photograph 20, portrait composition from the Project Photography collection.",
+    "label": "Frame 20 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-125444353",
@@ -302,9 +397,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 15,
-    "alt": "Photograph 16, portrait composition from the Project Photography collection.",
-    "label": "Frame 16 - Portrait"
+    "order": 20,
+    "alt": "Photograph 21, portrait composition from the Project Photography collection.",
+    "label": "Frame 21 - Portrait"
   },
   {
     "id": "best-pxl-20260413-124819579",
@@ -321,9 +416,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 16,
-    "alt": "Photograph 17, portrait composition from the Project Photography collection.",
-    "label": "Frame 17 - Portrait"
+    "order": 21,
+    "alt": "Photograph 22, portrait composition from the Project Photography collection.",
+    "label": "Frame 22 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-124819579",
@@ -340,9 +435,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 17,
-    "alt": "Photograph 18, portrait composition from the Project Photography collection.",
-    "label": "Frame 18 - Portrait"
+    "order": 22,
+    "alt": "Photograph 23, portrait composition from the Project Photography collection.",
+    "label": "Frame 23 - Portrait"
   },
   {
     "id": "best-pxl-20260413-121040376",
@@ -359,9 +454,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 18,
-    "alt": "Photograph 19, portrait composition from the Project Photography collection.",
-    "label": "Frame 19 - Portrait"
+    "order": 23,
+    "alt": "Photograph 24, portrait composition from the Project Photography collection.",
+    "label": "Frame 24 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-121040376",
@@ -378,9 +473,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 19,
-    "alt": "Photograph 20, portrait composition from the Project Photography collection.",
-    "label": "Frame 20 - Portrait"
+    "order": 24,
+    "alt": "Photograph 25, portrait composition from the Project Photography collection.",
+    "label": "Frame 25 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-121016700",
@@ -397,9 +492,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 20,
-    "alt": "Photograph 21, portrait composition from the Project Photography collection.",
-    "label": "Frame 21 - Portrait"
+    "order": 25,
+    "alt": "Photograph 26, portrait composition from the Project Photography collection.",
+    "label": "Frame 26 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-121009919",
@@ -416,9 +511,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 21,
-    "alt": "Photograph 22, portrait composition from the Project Photography collection.",
-    "label": "Frame 22 - Portrait"
+    "order": 26,
+    "alt": "Photograph 27, portrait composition from the Project Photography collection.",
+    "label": "Frame 27 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-121000613",
@@ -435,9 +530,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 22,
-    "alt": "Photograph 23, portrait composition from the Project Photography collection.",
-    "label": "Frame 23 - Portrait"
+    "order": 27,
+    "alt": "Photograph 28, portrait composition from the Project Photography collection.",
+    "label": "Frame 28 - Portrait"
   },
   {
     "id": "best-pxl-20260413-114300431",
@@ -454,9 +549,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 23,
-    "alt": "Photograph 24, portrait composition from the Project Photography collection.",
-    "label": "Frame 24 - Portrait"
+    "order": 28,
+    "alt": "Photograph 29, portrait composition from the Project Photography collection.",
+    "label": "Frame 29 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-114300431",
@@ -473,9 +568,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 24,
-    "alt": "Photograph 25, portrait composition from the Project Photography collection.",
-    "label": "Frame 25 - Portrait"
+    "order": 29,
+    "alt": "Photograph 30, portrait composition from the Project Photography collection.",
+    "label": "Frame 30 - Portrait"
   },
   {
     "id": "best-pxl-20260413-102501114",
@@ -492,9 +587,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 25,
-    "alt": "Photograph 26, portrait composition from the Project Photography collection.",
-    "label": "Frame 26 - Portrait"
+    "order": 30,
+    "alt": "Photograph 31, portrait composition from the Project Photography collection.",
+    "label": "Frame 31 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-102501114",
@@ -511,9 +606,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 26,
-    "alt": "Photograph 27, portrait composition from the Project Photography collection.",
-    "label": "Frame 27 - Portrait"
+    "order": 31,
+    "alt": "Photograph 32, portrait composition from the Project Photography collection.",
+    "label": "Frame 32 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260413-075634181",
@@ -530,9 +625,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 27,
-    "alt": "Photograph 28, portrait composition from the Project Photography collection.",
-    "label": "Frame 28 - Portrait"
+    "order": 32,
+    "alt": "Photograph 33, portrait composition from the Project Photography collection.",
+    "label": "Frame 33 - Portrait"
   },
   {
     "id": "best-pxl-20260411-100423089-2",
@@ -549,9 +644,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 28,
-    "alt": "Photograph 29, portrait composition from the Project Photography collection.",
-    "label": "Frame 29 - Portrait"
+    "order": 33,
+    "alt": "Photograph 34, portrait composition from the Project Photography collection.",
+    "label": "Frame 34 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260411-100423089-2",
@@ -568,9 +663,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 29,
-    "alt": "Photograph 30, portrait composition from the Project Photography collection.",
-    "label": "Frame 30 - Portrait"
+    "order": 34,
+    "alt": "Photograph 35, portrait composition from the Project Photography collection.",
+    "label": "Frame 35 - Portrait"
   },
   {
     "id": "kazakhstan-pxl-20260411-092224080-2",
@@ -587,9 +682,9 @@ export const photoManifest = [
     "albumLabel": "Kazakhstan",
     "isBest": false,
     "isCover": false,
-    "order": 30,
-    "alt": "Photograph 31, portrait composition from the Project Photography collection.",
-    "label": "Frame 31 - Portrait"
+    "order": 35,
+    "alt": "Photograph 36, portrait composition from the Project Photography collection.",
+    "label": "Frame 36 - Portrait"
   },
   {
     "id": "best-pxl-20260407-175432417-2",
@@ -606,9 +701,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 31,
-    "alt": "Photograph 32, portrait composition from the Project Photography collection.",
-    "label": "Frame 32 - Portrait"
+    "order": 36,
+    "alt": "Photograph 37, portrait composition from the Project Photography collection.",
+    "label": "Frame 37 - Portrait"
   },
   {
     "id": "netherlands-pxl-20260407-175432417-2",
@@ -625,85 +720,9 @@ export const photoManifest = [
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": false,
-    "order": 32,
-    "alt": "Photograph 33, portrait composition from the Project Photography collection.",
-    "label": "Frame 33 - Portrait"
-  },
-  {
-    "id": "netherlands-snapchat-1933699249",
-    "capturedAt": "2026-04-04T13:12:09.256Z",
-    "src": "photos/small/netherlands-snapchat-1933699249.jpg",
-    "srcLarge": "photos/large/netherlands-snapchat-1933699249-large.jpg",
-    "width": 1512,
-    "height": 2688,
-    "aspect": 0.5625,
-    "orientation": "portrait",
-    "monthId": "2026-04",
-    "monthLabel": "April 2026",
-    "albumId": "netherlands",
-    "albumLabel": "Netherlands",
-    "isBest": false,
-    "isCover": false,
-    "order": 33,
-    "alt": "Photograph 34, portrait composition from the Project Photography collection.",
-    "label": "Frame 34 - Portrait"
-  },
-  {
-    "id": "germany-snapchat-1724593377",
-    "capturedAt": "2026-04-04T13:12:09.239Z",
-    "src": "photos/small/germany-snapchat-1724593377.jpg",
-    "srcLarge": "photos/large/germany-snapchat-1724593377-large.jpg",
-    "width": 1512,
-    "height": 2688,
-    "aspect": 0.5625,
-    "orientation": "portrait",
-    "monthId": "2026-04",
-    "monthLabel": "April 2026",
-    "albumId": "germany",
-    "albumLabel": "Germany",
-    "isBest": false,
-    "isCover": false,
-    "order": 34,
-    "alt": "Photograph 35, portrait composition from the Project Photography collection.",
-    "label": "Frame 35 - Portrait"
-  },
-  {
-    "id": "netherlands-snapchat-1542994089-2",
-    "capturedAt": "2026-04-04T13:12:09.228Z",
-    "src": "photos/small/netherlands-snapchat-1542994089-2.jpg",
-    "srcLarge": "photos/large/netherlands-snapchat-1542994089-2-large.jpg",
-    "width": 1361,
-    "height": 2419,
-    "aspect": 0.5626,
-    "orientation": "portrait",
-    "monthId": "2026-04",
-    "monthLabel": "April 2026",
-    "albumId": "netherlands",
-    "albumLabel": "Netherlands",
-    "isBest": false,
-    "isCover": false,
-    "order": 35,
-    "alt": "Photograph 36, portrait composition from the Project Photography collection.",
-    "label": "Frame 36 - Portrait"
-  },
-  {
-    "id": "germany-cover",
-    "capturedAt": "2026-04-04T13:12:08.998Z",
-    "src": "photos/small/germany-cover.jpg",
-    "srcLarge": "photos/large/germany-cover-large.jpg",
-    "width": 1600,
-    "height": 1200,
-    "aspect": 1.3333,
-    "orientation": "landscape",
-    "monthId": "2026-04",
-    "monthLabel": "April 2026",
-    "albumId": "germany",
-    "albumLabel": "Germany",
-    "isBest": false,
-    "isCover": true,
-    "order": 36,
-    "alt": "Photograph 37, landscape composition from the Project Photography collection.",
-    "label": "Frame 37 - Horizon"
+    "order": 37,
+    "alt": "Photograph 38, portrait composition from the Project Photography collection.",
+    "label": "Frame 38 - Portrait"
   },
   {
     "id": "best-pxl-20260403-193020379-2",
@@ -720,9 +739,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 37,
-    "alt": "Photograph 38, portrait composition from the Project Photography collection.",
-    "label": "Frame 38 - Portrait"
+    "order": 38,
+    "alt": "Photograph 39, portrait composition from the Project Photography collection.",
+    "label": "Frame 39 - Portrait"
   },
   {
     "id": "netherlands-pxl-20260403-193020379-2",
@@ -739,9 +758,9 @@ export const photoManifest = [
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": false,
-    "order": 38,
-    "alt": "Photograph 39, portrait composition from the Project Photography collection.",
-    "label": "Frame 39 - Portrait"
+    "order": 39,
+    "alt": "Photograph 40, portrait composition from the Project Photography collection.",
+    "label": "Frame 40 - Portrait"
   },
   {
     "id": "netherlands-pxl-20260401-200815853-night",
@@ -758,9 +777,9 @@ export const photoManifest = [
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": false,
-    "order": 39,
-    "alt": "Photograph 40, portrait composition from the Project Photography collection.",
-    "label": "Frame 40 - Portrait"
+    "order": 40,
+    "alt": "Photograph 41, portrait composition from the Project Photography collection.",
+    "label": "Frame 41 - Portrait"
   },
   {
     "id": "best-pxl-20260331-165858791-2",
@@ -777,9 +796,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 40,
-    "alt": "Photograph 41, portrait composition from the Project Photography collection.",
-    "label": "Frame 41 - Portrait"
+    "order": 41,
+    "alt": "Photograph 42, portrait composition from the Project Photography collection.",
+    "label": "Frame 42 - Portrait"
   },
   {
     "id": "netherlands-pxl-20260331-165858791-2",
@@ -796,9 +815,9 @@ export const photoManifest = [
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": false,
-    "order": 41,
-    "alt": "Photograph 42, portrait composition from the Project Photography collection.",
-    "label": "Frame 42 - Portrait"
+    "order": 42,
+    "alt": "Photograph 43, portrait composition from the Project Photography collection.",
+    "label": "Frame 43 - Portrait"
   },
   {
     "id": "best-pxl-20260331-165245574-2",
@@ -815,9 +834,9 @@ export const photoManifest = [
     "albumLabel": "Best",
     "isBest": true,
     "isCover": false,
-    "order": 42,
-    "alt": "Photograph 43, portrait composition from the Project Photography collection.",
-    "label": "Frame 43 - Portrait"
+    "order": 43,
+    "alt": "Photograph 44, portrait composition from the Project Photography collection.",
+    "label": "Frame 44 - Portrait"
   },
   {
     "id": "netherlands-pxl-20260331-165245574-2",
@@ -834,9 +853,9 @@ export const photoManifest = [
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": false,
-    "order": 43,
-    "alt": "Photograph 44, portrait composition from the Project Photography collection.",
-    "label": "Frame 44 - Portrait"
+    "order": 44,
+    "alt": "Photograph 45, portrait composition from the Project Photography collection.",
+    "label": "Frame 45 - Portrait"
   },
   {
     "id": "netherlands-pxl-20260331-164416076-2",
@@ -853,9 +872,9 @@ export const photoManifest = [
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": false,
-    "order": 44,
-    "alt": "Photograph 45, portrait composition from the Project Photography collection.",
-    "label": "Frame 45 - Portrait"
+    "order": 45,
+    "alt": "Photograph 46, portrait composition from the Project Photography collection.",
+    "label": "Frame 46 - Portrait"
   },
   {
     "id": "netherlands-pxl-20260331-163638452-2",
@@ -872,28 +891,9 @@ export const photoManifest = [
     "albumLabel": "Netherlands",
     "isBest": false,
     "isCover": false,
-    "order": 45,
-    "alt": "Photograph 46, landscape composition from the Project Photography collection.",
-    "label": "Frame 46 - Horizon"
-  },
-  {
-    "id": "morrocco-cover",
-    "capturedAt": "2026-03-30T18:58:09.205Z",
-    "src": "photos/small/morrocco-cover.jpg",
-    "srcLarge": "photos/large/morrocco-cover-large.jpg",
-    "width": 3648,
-    "height": 4864,
-    "aspect": 0.75,
-    "orientation": "portrait",
-    "monthId": "2026-03",
-    "monthLabel": "March 2026",
-    "albumId": "morrocco",
-    "albumLabel": "Morrocco",
-    "isBest": false,
-    "isCover": true,
     "order": 46,
-    "alt": "Photograph 47, portrait composition from the Project Photography collection.",
-    "label": "Frame 47 - Portrait"
+    "alt": "Photograph 47, landscape composition from the Project Photography collection.",
+    "label": "Frame 47 - Horizon"
   },
   {
     "id": "netherlands-pxl-20260330-065936598-2",
