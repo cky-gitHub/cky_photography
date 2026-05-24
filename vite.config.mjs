@@ -1,7 +1,7 @@
-export default ({ command }) => ({
-  base: command === "build" ? "/cky_photography/" : "/",
+export default {
+  base: "/",
   build: {
     outDir: "docs",
     emptyOutDir: true,
   },
-});
+};
