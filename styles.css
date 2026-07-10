@@ -841,3 +841,77 @@ body.is-intro .hud__progress {
     opacity: 0;
   }
 }
+
+.site-footer-link {
+  position: fixed;
+  right: 20px;
+  bottom: 16px;
+  z-index: 5;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.site-footer-link:hover,
+.site-footer-link:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.legal-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 72px 24px 96px;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--text);
+}
+
+.legal-page__back {
+  display: inline-block;
+  margin-bottom: 40px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
+}
+
+.legal-page__back:hover,
+.legal-page__back:focus-visible {
+  color: var(--accent);
+}
+
+.legal-page__title {
+  font-family: "Syne", sans-serif;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 700;
+  margin: 0 0 40px;
+}
+
+.legal-page__section {
+  margin-bottom: 36px;
+  line-height: 1.6;
+}
+
+.legal-page__section h2 {
+  font-family: "Syne", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.legal-page__section p {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.legal-page__section a {
+  color: var(--accent);
+}
+
+.legal-page__muted {
+  font-size: 0.88rem;
+}
