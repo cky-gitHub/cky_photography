@@ -96,7 +96,6 @@ export function createHeroScene({
   let ringRotationTarget = 0;
   let ringVelocity = 0;
   let waveUntil = 0;
-  let happyUntil = 0;
   let lastHeadX = -1;
   let lastHeadY = -1;
   const autoSpin = 0.045;
@@ -148,7 +147,6 @@ export function createHeroScene({
 
   function wave(duration = 2.4) {
     waveUntil = timer.getElapsed() + duration;
-    happyUntil = Math.max(happyUntil, waveUntil);
   }
 
   function animate(timestamp) {
@@ -210,28 +208,20 @@ export function createHeroScene({
     parts.head.rotation.z += (-yaw * 0.16 - parts.head.rotation.z) * ease(4);
     parts.body.rotation.y += (yaw * 0.2 - parts.body.rotation.y) * ease(3);
 
-    // Expression
+    // Eyes: blink now and then, glow softly.
     const isWaving = t < waveUntil;
-    const isHappy = t < happyUntil || Boolean(hoveredId) || robotHovered;
-    parts.faceHappy += ((isHappy ? 1 : 0) - parts.faceHappy) * ease(9);
-    const happy = parts.faceHappy;
-    const blink = reduced ? 0 : Math.pow(Math.max(0, Math.sin(t * 1.3 + 0.4)), 60);
+    const blink = reduced ? 0 : Math.pow(Math.max(0, Math.sin(t * 1.35 + 0.4)), 48);
     for (const eye of parts.eyes) {
-      eye.scale.y = Math.max(0.06, (1 - blink) * (1 - happy));
-      eye.visible = eye.scale.y > 0.07;
+      eye.scale.y = Math.min(Math.max(1 - blink * 0.92, 0.08), 1);
     }
-    for (const arc of parts.happyEyes) {
-      arc.scale.setScalar(Math.max(0.001, happy));
-      arc.visible = happy > 0.05;
-    }
-    parts.smile.scale.setScalar(Math.max(0.001, 0.55 + happy * 0.45));
-    parts.cheekMaterial.opacity = 0.35 + happy * 0.45;
+    parts.eyeMaterial.emissiveIntensity = 1 + (reduced ? 0 : (Math.sin(t * 3.4) * 0.5 + 0.5) * 0.24);
 
-    // Arms: the right one waves, the left one floats.
+    // Arms: the right one waves, the left one floats. Positive z is outward
+    // for the right arm, so the left arm's angles are negated.
     const [armLeft, armRight] = parts.arms;
     const float = reduced ? 0 : Math.sin(t * 1.5 + 0.6) * 0.06;
-    armLeft.rotation.z += (0.22 + float - armLeft.rotation.z) * ease(6);
-    armLeft.userData.elbow.rotation.z += (-0.25 - armLeft.userData.elbow.rotation.z) * ease(6);
+    armLeft.rotation.z += (-(0.22 + float) - armLeft.rotation.z) * ease(6);
+    armLeft.userData.elbow.rotation.z += (0.25 - armLeft.userData.elbow.rotation.z) * ease(6);
     const rightTarget = isWaving ? 2.55 : 0.22 + float;
     armRight.rotation.z += (rightTarget - armRight.rotation.z) * ease(isWaving ? 7 : 4);
     const elbowTarget = isWaving && !reduced ? -0.35 + Math.sin(t * 11) * 0.55 : -0.25;
@@ -334,7 +324,6 @@ export function createHeroScene({
     setPointerFromEvent(event);
     const hit = pick();
     if (hit?.type === "photo") {
-      happyUntil = timer.getElapsed() + 1.2;
       onPhotoSelect?.(hit.id, cardById.get(hit.id));
     } else if (hit?.type === "robot") {
       wave();
@@ -453,15 +442,9 @@ function createRobot() {
     clearcoatRoughness: 0.08,
   });
   const eyeMaterial = new THREE.MeshStandardMaterial({
-    color: 0xdffbff,
-    emissive: new THREE.Color(0xbff4ff),
-    emissiveIntensity: 1.6,
-  });
-  const cheekMaterial = new THREE.MeshBasicMaterial({
-    color: 0xff8f9a,
-    transparent: true,
-    opacity: 0.4,
-    depthWrite: false,
+    color: 0x0d1117,
+    emissive: new THREE.Color(0xd2f8ff),
+    emissiveIntensity: 1,
   });
   const antennaMaterial = new THREE.MeshStandardMaterial({
     color: 0xffc78a,
@@ -538,39 +521,14 @@ function createRobot() {
     head.add(mesh);
   }
 
-  const faceZ = 0.668;
-  const eyeGeometry = new THREE.CapsuleGeometry(0.075, 0.1, 6, 16);
-  const eyes = [-0.2, 0.2].map((x) => {
+  const eyeGeometry = new THREE.SphereGeometry(0.07, 16, 16);
+  const eyes = [-0.13, 0.13].map((x) => {
     const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    eye.scale.z = 0.35;
-    eye.position.set(x, 0.04, faceZ);
+    eye.scale.set(1, 1.1, 0.52);
+    eye.position.set(x, -0.01, 0.672);
     head.add(eye);
     return eye;
   });
-
-  // ^ ^ for when it's pleased
-  const arcGeometry = new THREE.TorusGeometry(0.1, 0.03, 8, 24, Math.PI);
-  const happyEyes = [-0.2, 0.2].map((x) => {
-    const arc = new THREE.Mesh(arcGeometry, eyeMaterial);
-    arc.position.set(x, 0.0, faceZ);
-    arc.scale.setScalar(0.001);
-    arc.visible = false;
-    head.add(arc);
-    return arc;
-  });
-
-  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.022, 8, 20, Math.PI), eyeMaterial);
-  smile.rotation.z = Math.PI;
-  smile.position.set(0, -0.2, faceZ);
-  head.add(smile);
-
-  const cheekGeometry = new THREE.CircleGeometry(0.07, 20);
-  for (const x of [-0.34, 0.34]) {
-    const cheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
-    cheek.scale.y = 0.6;
-    cheek.position.set(x, -0.16, faceZ + 0.001);
-    head.add(cheek);
-  }
 
   for (const x of [-0.79, 0.79]) {
     const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 28), shellShade);
@@ -636,10 +594,6 @@ function createRobot() {
     hand.position.y = -0.33;
     elbow.add(hand);
     arm.userData.elbow = elbow;
-    // Mirror the left arm so positive z swings either arm outward.
-    if (side < 0) {
-      arm.scale.x = -1;
-    }
     return arm;
   });
 
@@ -662,16 +616,13 @@ function createRobot() {
     body,
     head,
     eyes,
-    happyEyes,
-    smile,
-    cheekMaterial,
+    eyeMaterial,
     antenna,
     antennaMaterial,
     chestMaterial,
     arms,
     legs,
     flames,
-    faceHappy: 0,
   });
   return root;
 }
