@@ -841,3 +841,20 @@ body.is-intro .hud__progress {
     opacity: 0;
   }
 }
+
+/* Cross-fade to and from ckyogeshwar.com instead of cutting to black. The main
+   site opts in with the same rule; both sides have to. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 420ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
