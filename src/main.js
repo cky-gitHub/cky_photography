@@ -1,3 +1,15 @@
+// Self-hosted in place of the former fonts.googleapis.com request, which sent
+// every visitor's IP to Google before they had agreed to anything. Same
+// weights the Google Fonts URL used to request: Syne 400/500/700/800,
+// Space Grotesk 400/500/700.
+import "@fontsource/syne/400.css";
+import "@fontsource/syne/500.css";
+import "@fontsource/syne/700.css";
+import "@fontsource/syne/800.css";
+import "@fontsource/space-grotesk/400.css";
+import "@fontsource/space-grotesk/500.css";
+import "@fontsource/space-grotesk/700.css";
+
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";

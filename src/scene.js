@@ -43,6 +43,8 @@ export function createGalleryScene({
   const cameraRest = new THREE.Vector3(0, 5, 20);
   const cameraLookAt = new THREE.Vector3(0, 1.00, 0);
   const soloViewPosition = new THREE.Vector3(0, 2.55, 6.1);
+  const soloCameraPosition = new THREE.Vector3(0, 2.55, 20);
+  const soloCameraLookAt = new THREE.Vector3(0, 2.55, 6.1);
   const pointerOffset = new THREE.Vector3();
   const clock = new THREE.Clock();
 
@@ -206,15 +208,20 @@ export function createGalleryScene({
     }
     ringRotation = lerpAngle(ringRotation, ringRotationTarget, reduced ? 0.22 : 0.12);
 
-    pointerOffset.set(pointerNdc.x * 0.52, pointerNdc.y * 0.36, 0);
-    tempVectorA.copy(cameraRest).add(pointerOffset);
-    camera.position.lerp(tempVectorA, reduced ? 0.16 : 0.08);
-    tempVectorB.set(
-      cameraLookAt.x + pointerNdc.x * 0.28,
-      cameraLookAt.y + pointerNdc.y * 0.12,
-      cameraLookAt.z,
-    );
-    camera.lookAt(tempVectorB);
+    if (soloPhotoId) {
+      camera.position.lerp(soloCameraPosition, reduced ? 0.16 : 0.08);
+      camera.lookAt(soloCameraLookAt);
+    } else {
+      pointerOffset.set(pointerNdc.x * 0.52, pointerNdc.y * 0.36, 0);
+      tempVectorA.copy(cameraRest).add(pointerOffset);
+      camera.position.lerp(tempVectorA, reduced ? 0.16 : 0.08);
+      tempVectorB.set(
+        cameraLookAt.x + pointerNdc.x * 0.28,
+        cameraLookAt.y + pointerNdc.y * 0.12,
+        cameraLookAt.z,
+      );
+      camera.lookAt(tempVectorB);
+    }
 
     for (const photo of photos) {
       const card = photoGroups.get(photo.id);
