@@ -5,20 +5,19 @@ const TAU = Math.PI * 2;
 const tempVectorA = new THREE.Vector3();
 const tempVectorB = new THREE.Vector3();
 const tempVectorC = new THREE.Vector3();
-const tempColor = new THREE.Color();
 
-export function createGalleryScene({
+/**
+ * The hero: a slowly turning ring of the best photographs with the robot
+ * hovering in the middle. It owns one screen and nothing else - scrolling
+ * past it just scrolls the page down to the gallery.
+ */
+export function createHeroScene({
   canvas,
-  months,
   photos,
-  maxScrollTurn,
-  state,
   reducedMotion,
-  onHover,
-  onFocus,
-  onFrontPhotoChange,
-  onAlbumChange,
   onPhotoSelect,
+  onRobotClick,
+  onHeadMove,
   onInputMode,
 }) {
   const prefersCoarsePointer = matchMedia("(pointer: coarse)").matches;
@@ -30,99 +29,95 @@ export function createGalleryScene({
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.16;
+  renderer.toneMappingExposure = 1.1;
   renderer.setClearAlpha(0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, prefersCoarsePointer ? 1.25 : 1.75));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, prefersCoarsePointer ? 1.5 : 1.75));
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 260);
   const raycaster = new THREE.Raycaster();
-  const pointerNdc = new THREE.Vector2();
+  const pointerNdc = new THREE.Vector2(0, 0);
   const pointerPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   const pointerWorld = new THREE.Vector3();
-  const cameraRest = new THREE.Vector3(0, 5, 20);
-  const cameraLookAt = new THREE.Vector3(0, 1.00, 0);
-  const soloViewPosition = new THREE.Vector3(0, 2.55, 6.1);
-  const soloCameraPosition = new THREE.Vector3(0, 2.55, 20);
-  const soloCameraLookAt = new THREE.Vector3(0, 2.55, 6.1);
-  const pointerOffset = new THREE.Vector3();
-  const clock = new THREE.Clock();
+  const pointerWorldTarget = new THREE.Vector3(0, 1.4, 4);
+  const cameraRest = new THREE.Vector3(0, 4.6, 24);
+  const cameraLookAt = new THREE.Vector3(0, -0.5, 0);
+  const timer = new THREE.Timer();
 
   const world = new THREE.Group();
   scene.add(world);
-  const photosRoot = new THREE.Group();
-  world.add(photosRoot);
+  const ringRoot = new THREE.Group();
+  world.add(ringRoot);
 
-  const ambient = new THREE.HemisphereLight(0xf5f8ff, 0x1d130c, 1.9);
-  const keyLight = new THREE.DirectionalLight(0xffe8cf, 2.85);
-  keyLight.position.set(7, 15, 12);
-  const rimLight = new THREE.DirectionalLight(0x98c4ff, 1.25);
-  rimLight.position.set(-10, 9, -12);
-  const jetLight = new THREE.PointLight(0xffb86c, 2.2, 20, 1.25);
-  jetLight.position.set(0, -0.3, -1.6);
+  const ambient = new THREE.HemisphereLight(0xf2f5ff, 0x1a120c, 1.7);
+  const keyLight = new THREE.DirectionalLight(0xffeedd, 2.6);
+  keyLight.position.set(6, 12, 14);
+  const rimLight = new THREE.DirectionalLight(0x9cc4ff, 1.6);
+  rimLight.position.set(-9, 6, -10);
+  const jetLight = new THREE.PointLight(0xffa860, 2.2, 7, 1.6);
+  jetLight.position.set(0, -1.2, -0.6);
   scene.add(ambient, keyLight, rimLight, jetLight);
 
-  const stars = createStars(prefersCoarsePointer);
-  world.add(stars);
-
-  const helixRadius = 6.7;
-  const ringY = 0;
-  const cardPitchCompensation = -0.18;
+  const ringRadius = 6.4;
+  // Below the robot's waist, so the card passing in front never hides its face.
+  const ringY = -1.1;
   const textureLoader = new THREE.TextureLoader();
-  const photoGroups = new Map();
-  const photoById = new Map(photos.map((photo) => [photo.id, photo]));
-  const interactiveObjects = [];
+  const cards = [];
+  const cardById = new Map();
 
   photos.forEach((photo, photoIndex) => {
     const card = createPhotoCard(photo, textureLoader, prefersCoarsePointer);
-    card.userData = {
-      photo,
-      baseAngle: (photoIndex / Math.max(photos.length, 1)) * TAU,
-      frame: card.getObjectByName("frame"),
-      imagePlane: card.getObjectByName("imagePlane"),
-    };
-    card.userData.imagePlane.userData.source = "ring";
-    photosRoot.add(card);
-    photoGroups.set(photo.id, card);
-    interactiveObjects.push(card.userData.imagePlane);
+    card.userData.baseAngle = (photoIndex / Math.max(photos.length, 1)) * TAU;
+    card.userData.hover = 0;
+    ringRoot.add(card);
+    cards.push(card);
+    cardById.set(photo.id, card);
   });
+  const cardPlanes = cards.map((card) => card.userData.plane);
 
   const robot = createRobot();
-  robot.position.set(0, -0.18, 0.15);
-  robot.scale.setScalar(1.18);
+  robot.position.set(0, 0.1, 0.2);
+  robot.scale.setScalar(1.12);
   world.add(robot);
-
-  const robotHead = robot.getObjectByName("robotHead");
-  const robotBody = robot.getObjectByName("robotBody");
-  const robotEyes = robot.getObjectByName("robotEyes");
-  const robotArms = robot.userData.arms ?? [];
-  const robotLegs = robot.userData.legs ?? [];
-  const thrusters = robot.userData.thrusters ?? [];
-  const eyeMeshes = robot.userData.eyeMeshes ?? [];
+  const parts = robot.userData;
+  const robotMeshes = [];
+  robot.traverse((object) => {
+    if (object.isMesh && !object.userData.isFlame) {
+      robotMeshes.push(object);
+    }
+  });
 
   let reduced = reducedMotion;
-  let hoveredId = state.hoveredId;
-  let focusedId = state.focusedId;
-  let soloPhotoId = state.soloPhotoId;
-  let scrollProgress = 0;
-  let activeAlbumId = photos[0]?.albumId ?? null;
-  let frontPhotoId = photos[0]?.id ?? null;
+  let active = true;
+  let frameHandle = 0;
+  let hoveredId = null;
+  let robotHovered = false;
   let ringRotation = 0;
   let ringRotationTarget = 0;
-  const ringAutoSpinSpeed = -0.04;
-  const dragState = {
-    active: false,
-    pointerId: null,
-    lastX: 0,
-    moved: false,
-    totalDelta: 0,
-  };
+  let ringVelocity = 0;
+  let waveUntil = 0;
+  let happyUntil = 0;
+  let lastHeadX = -1;
+  let lastHeadY = -1;
+  const autoSpin = 0.045;
+  const drag = { active: false, pointerId: null, lastX: 0, moved: false, total: 0 };
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
-    camera.aspect = rect.width / Math.max(rect.height, 1);
+    const aspect = rect.width / Math.max(rect.height, 1);
+    camera.aspect = aspect;
+    // Pull back on narrow screens - but only until most of the ring fits;
+    // on a phone the outer cards may run off the edges so the robot stays big.
+    const halfWidth = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * aspect;
+    const fitRadius = aspect < 1 ? ringRadius * 0.72 : ringRadius + 1.5;
+    const needed = fitRadius / (halfWidth * 0.98) + ringRadius * 0.55;
+    const distance = Math.max(24, needed);
+    cameraRest.set(0, 4.6 * (distance / 24), distance);
     camera.updateProjectionMatrix();
     renderer.setSize(rect.width, rect.height, false);
+    if (!frameHandle) {
+      renderer.render(scene, camera);
+    }
   }
 
   function setPointerFromEvent(event) {
@@ -130,837 +125,581 @@ export function createGalleryScene({
     pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointerNdc, camera);
-    raycaster.ray.intersectPlane(pointerPlane, pointerWorld);
-    state.pointerWorldTarget.x = pointerWorld.x;
-    state.pointerWorldTarget.y = THREE.MathUtils.clamp(pointerWorld.y + 0.45, -2.4, 5.2);
-    state.pointerWorldTarget.z = THREE.MathUtils.clamp(pointerWorld.z, -8, 8);
+    if (raycaster.ray.intersectPlane(pointerPlane, pointerWorld)) {
+      pointerWorldTarget.set(
+        pointerWorld.x,
+        THREE.MathUtils.clamp(pointerWorld.y + 0.4, -2.4, 5.2),
+        4,
+      );
+    }
   }
 
-  function pickPhoto() {
+  function pick() {
     raycaster.setFromCamera(pointerNdc, camera);
-    const hits = raycaster.intersectObjects(interactiveObjects, false);
-    const hit = hits[0];
-    if (!hit?.object?.userData?.photoId) {
+    const hit = raycaster.intersectObjects([...cardPlanes, ...robotMeshes], false)[0];
+    if (!hit) {
       return null;
     }
-
-    return {
-      photoId: hit.object.userData.photoId,
-      source: hit.object.userData.source ?? "ring",
-    };
-  }
-
-  function updateHover(nextHoveredId) {
-    if (hoveredId !== nextHoveredId) {
-      hoveredId = nextHoveredId;
-      onHover(nextHoveredId);
+    if (hit.object.userData.photoId) {
+      return { type: "photo", id: hit.object.userData.photoId };
     }
+    return { type: "robot" };
   }
 
-  function focusPhoto(photoId) {
-    focusedId = photoId;
-    onFocus(photoId);
+  function wave(duration = 2.4) {
+    waveUntil = timer.getElapsed() + duration;
+    happyUntil = Math.max(happyUntil, waveUntil);
   }
 
-  function clearFocus() {
-    focusedId = null;
-    onFocus(null);
-  }
+  function animate(timestamp) {
+    frameHandle = requestAnimationFrame(animate);
+    timer.update(timestamp);
+    const delta = Math.min(timer.getDelta(), 0.1);
+    const t = timer.getElapsed();
+    const ease = (rate) => (reduced ? 1 : 1 - Math.exp(-rate * delta));
 
-  function setScrollProgress(progress) {
-    scrollProgress = THREE.MathUtils.clamp(progress, 0, 1);
-  }
-
-  function animate() {
-    const delta = Math.min(clock.getDelta(), 0.1);
-    const elapsed = clock.elapsedTime;
-    let nearestPhotoId = frontPhotoId;
-    let nearestFrontness = -Infinity;
-    const fallProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.1, 0.28);
-    const landProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.3, 0.62);
-    const descentProgress = THREE.MathUtils.smoothstep(scrollProgress, 0.12, 0.62);
-    const ringOpacity = 1;
-    const ringLift = THREE.MathUtils.smoothstep(scrollProgress, 0.02, 0.52) * 12;
-    const targetRobotY = THREE.MathUtils.lerp(-0.18, -0.68, descentProgress);
-
-    if (!reduced) {
-      stars.rotation.y += delta * 0.008;
+    // Ring
+    if (!drag.active) {
+      ringVelocity *= Math.exp(-2.4 * delta);
+      ringRotationTarget += ringVelocity * delta + (reduced ? 0 : autoSpin * delta);
     }
+    ringRotation += (ringRotationTarget - ringRotation) * ease(8);
 
-    stars.material.opacity = THREE.MathUtils.lerp(
-      stars.material.opacity,
-      soloPhotoId ? 0 : 0.3,
-      reduced ? 0.22 : 0.1,
-    );
-    photosRoot.position.y = THREE.MathUtils.lerp(
-      photosRoot.position.y,
-      ringLift,
-      reduced ? 0.2 : 0.12,
-    );
-    photosRoot.visible = ringOpacity > 0.02 || Boolean(soloPhotoId);
-    robot.visible = !soloPhotoId;
-
-    const focusedCard = focusedId ? photoGroups.get(focusedId) : null;
-    if (!dragState.active && focusedCard) {
-      ringRotationTarget = -focusedCard.userData.baseAngle;
-    } else if (!dragState.active) {
-      ringRotationTarget -= delta * ringAutoSpinSpeed;
-    }
-    ringRotation = lerpAngle(ringRotation, ringRotationTarget, reduced ? 0.22 : 0.12);
-
-    if (soloPhotoId) {
-      camera.position.lerp(soloCameraPosition, reduced ? 0.16 : 0.08);
-      camera.lookAt(soloCameraLookAt);
-    } else {
-      pointerOffset.set(pointerNdc.x * 0.52, pointerNdc.y * 0.36, 0);
-      tempVectorA.copy(cameraRest).add(pointerOffset);
-      camera.position.lerp(tempVectorA, reduced ? 0.16 : 0.08);
-      tempVectorB.set(
-        cameraLookAt.x + pointerNdc.x * 0.28,
-        cameraLookAt.y + pointerNdc.y * 0.12,
-        cameraLookAt.z,
-      );
-      camera.lookAt(tempVectorB);
-    }
-
-    for (const photo of photos) {
-      const card = photoGroups.get(photo.id);
-      const frame = card.userData.frame;
-      const imagePlane = card.userData.imagePlane;
+    for (const card of cards) {
       const theta = card.userData.baseAngle + ringRotation;
-      const isHovered = hoveredId === photo.id;
-      const isFocused = focusedId === photo.id;
-      const isSoloTarget = soloPhotoId === photo.id;
       const frontness = (Math.cos(theta) + 1) * 0.5;
-      const centerCloseness = THREE.MathUtils.clamp(frontness, 0, 1);
+      const isHovered = hoveredId === card.userData.photo.id;
+      card.userData.hover += ((isHovered ? 1 : 0) - card.userData.hover) * ease(10);
+      const hover = card.userData.hover;
 
-      if (soloPhotoId && isSoloTarget) {
-        tempVectorA.copy(soloViewPosition);
-      } else {
-        tempVectorA.set(
-          Math.sin(theta) * helixRadius,
-          ringY,
-          Math.cos(theta) * helixRadius,
-        );
-        tempVectorA.z += isFocused ? centerCloseness * 0.92 + 0.12 : isHovered ? 0.1 : 0;
-      }
-
-      card.position.lerp(tempVectorA, reduced ? 0.2 : 0.12);
-
-      const targetYaw = soloPhotoId && isSoloTarget
-        ? 0
-        : Math.atan2(camera.position.x - card.position.x, camera.position.z - card.position.z);
-      card.rotation.y = lerpAngle(card.rotation.y, targetYaw, reduced ? 0.2 : 0.14);
-      card.rotation.x = THREE.MathUtils.lerp(
-        card.rotation.x,
-        soloPhotoId && isSoloTarget ? cardPitchCompensation : cardPitchCompensation,
-        reduced ? 0.2 : 0.16,
+      card.position.set(
+        Math.sin(theta) * ringRadius,
+        ringY + Math.sin(theta * 2 + t * 0.4) * 0.08,
+        Math.cos(theta) * ringRadius,
       );
-      card.rotation.z = THREE.MathUtils.lerp(card.rotation.z, 0, reduced ? 0.2 : 0.16);
+      card.rotation.y = Math.atan2(camera.position.x - card.position.x, camera.position.z - card.position.z);
+      card.rotation.x = -0.14;
+      card.scale.setScalar(1 + hover * 0.07);
 
-      const targetScale = soloPhotoId
-        ? isSoloTarget ? 2.3 : 1
-        : 1 + centerCloseness * 0.04 + (isHovered ? 0.06 : 0) + (isFocused ? centerCloseness * 0.7 + 0.2 : 0);
-      card.scale.x = THREE.MathUtils.lerp(card.scale.x || 1, targetScale, reduced ? 0.2 : 0.14);
-      card.scale.y = THREE.MathUtils.lerp(card.scale.y || 1, targetScale, reduced ? 0.2 : 0.14);
-      card.scale.z = THREE.MathUtils.lerp(card.scale.z || 1, targetScale, reduced ? 0.2 : 0.14);
-
-      if (!soloPhotoId) {
-        frame.material.color.lerp(
-          tempColor.set(isFocused ? "#f6f3ef" : isHovered ? "#e7eef8" : "#ccd5e1"),
-          reduced ? 0.18 : 0.12,
-        );
-      }
-      frame.material.opacity = THREE.MathUtils.lerp(
-        frame.material.opacity,
-        soloPhotoId ? 0 : (isFocused ? 0.24 : isHovered ? 0.16 : 0.08) * ringOpacity,
-        reduced ? 0.18 : 0.12,
-      );
-      imagePlane.material.opacity = THREE.MathUtils.lerp(
-        imagePlane.material.opacity,
-        soloPhotoId ? (isSoloTarget ? 1 : 0) : ringOpacity,
-        reduced ? 0.22 : 0.12,
-      );
-
-      if (!soloPhotoId && tempVectorA.z > nearestFrontness) {
-        nearestFrontness = tempVectorA.z;
-        nearestPhotoId = photo.id;
-      }
+      // Cards behind the robot recede into the dark instead of competing.
+      const light = THREE.MathUtils.lerp(0.36, 1, Math.pow(frontness, 0.8));
+      card.userData.material.color.setScalar(Math.min(1, light + hover * 0.2));
     }
 
-    if (nearestPhotoId && nearestPhotoId !== frontPhotoId) {
-      frontPhotoId = nearestPhotoId;
-      onFrontPhotoChange(frontPhotoId);
-    }
+    // Camera drifts a little with the pointer.
+    tempVectorA.set(pointerNdc.x * 0.6, pointerNdc.y * 0.35, 0).add(cameraRest);
+    camera.position.lerp(tempVectorA, ease(3));
+    tempVectorB.set(cameraLookAt.x + pointerNdc.x * 0.25, cameraLookAt.y + pointerNdc.y * 0.12, 0);
+    camera.lookAt(tempVectorB);
 
-    const displayAlbumId = photoById.get(focusedId || frontPhotoId)?.albumId ?? activeAlbumId;
-    if (displayAlbumId && displayAlbumId !== activeAlbumId) {
-      activeAlbumId = displayAlbumId;
-      onAlbumChange(activeAlbumId);
-    }
-
-    const localPointer = robot.worldToLocal(
-      tempVectorC.set(
-        state.pointerWorldTarget.x,
-        state.pointerWorldTarget.y,
-        state.pointerWorldTarget.z,
-      ),
+    // Robot: hover, look at the pointer, lean into the spin.
+    const bob = reduced ? 0 : Math.sin(t * 1.5) * 0.09;
+    robot.position.y = 0.1 + bob;
+    robot.rotation.z = THREE.MathUtils.lerp(
+      robot.rotation.z,
+      reduced ? 0 : THREE.MathUtils.clamp(-ringVelocity * 0.12, -0.18, 0.18) + Math.sin(t * 0.7) * 0.025,
+      ease(4),
     );
-    const maxHeadTurn = THREE.MathUtils.degToRad(40);
-    const yaw = Math.atan2(localPointer.x, Math.max(localPointer.z + 1.4, 0.35));
-    const pitch = Math.atan2(localPointer.y - 1.8, Math.max(localPointer.z + 1.7, 0.45));
-    const limitedYaw = THREE.MathUtils.clamp(yaw * 0.98, -maxHeadTurn, maxHeadTurn);
-    const limitedPitch = THREE.MathUtils.clamp(-pitch * 0.38, -maxHeadTurn, maxHeadTurn);
-    robotHead.rotation.y = THREE.MathUtils.lerp(robotHead.rotation.y, limitedYaw, reduced ? 0.18 : 0.1);
-    robotHead.rotation.x = THREE.MathUtils.lerp(robotHead.rotation.x, limitedPitch, reduced ? 0.18 : 0.1);
-    robotBody.rotation.y = THREE.MathUtils.lerp(robotBody.rotation.y, yaw * 0.18, reduced ? 0.16 : 0.08);
 
-    const armRaise = fallProgress * (1 - landProgress);
-    for (const arm of robotArms) {
-      const side = arm.userData.side ?? 1;
-      arm.rotation.z = THREE.MathUtils.lerp(
-        arm.rotation.z,
-        side * (0.12 + 0.96 * armRaise),
-        reduced ? 0.22 : 0.12,
-      );
-      arm.rotation.x = THREE.MathUtils.lerp(
-        arm.rotation.x,
-        -0.16 - 0.18 * armRaise,
-        reduced ? 0.22 : 0.12,
-      );
+    const local = robot.worldToLocal(tempVectorC.copy(pointerWorldTarget));
+    const maxTurn = THREE.MathUtils.degToRad(38);
+    const yaw = THREE.MathUtils.clamp(Math.atan2(local.x, Math.max(local.z, 0.4)), -maxTurn, maxTurn);
+    const pitch = THREE.MathUtils.clamp(-Math.atan2(local.y - 1.9, Math.max(local.z, 0.4)) * 0.45, -0.4, 0.35);
+    parts.head.rotation.y += (yaw - parts.head.rotation.y) * ease(6);
+    parts.head.rotation.x += (pitch - parts.head.rotation.x) * ease(6);
+    parts.head.rotation.z += (-yaw * 0.16 - parts.head.rotation.z) * ease(4);
+    parts.body.rotation.y += (yaw * 0.2 - parts.body.rotation.y) * ease(3);
+
+    // Expression
+    const isWaving = t < waveUntil;
+    const isHappy = t < happyUntil || Boolean(hoveredId) || robotHovered;
+    parts.faceHappy += ((isHappy ? 1 : 0) - parts.faceHappy) * ease(9);
+    const happy = parts.faceHappy;
+    const blink = reduced ? 0 : Math.pow(Math.max(0, Math.sin(t * 1.3 + 0.4)), 60);
+    for (const eye of parts.eyes) {
+      eye.scale.y = Math.max(0.06, (1 - blink) * (1 - happy));
+      eye.visible = eye.scale.y > 0.07;
+    }
+    for (const arc of parts.happyEyes) {
+      arc.scale.setScalar(Math.max(0.001, happy));
+      arc.visible = happy > 0.05;
+    }
+    parts.smile.scale.setScalar(Math.max(0.001, 0.55 + happy * 0.45));
+    parts.cheekMaterial.opacity = 0.35 + happy * 0.45;
+
+    // Arms: the right one waves, the left one floats.
+    const [armLeft, armRight] = parts.arms;
+    const float = reduced ? 0 : Math.sin(t * 1.5 + 0.6) * 0.06;
+    armLeft.rotation.z += (0.22 + float - armLeft.rotation.z) * ease(6);
+    armLeft.userData.elbow.rotation.z += (-0.25 - armLeft.userData.elbow.rotation.z) * ease(6);
+    const rightTarget = isWaving ? 2.55 : 0.22 + float;
+    armRight.rotation.z += (rightTarget - armRight.rotation.z) * ease(isWaving ? 7 : 4);
+    const elbowTarget = isWaving && !reduced ? -0.35 + Math.sin(t * 11) * 0.55 : -0.25;
+    armRight.userData.elbow.rotation.z += (elbowTarget - armRight.userData.elbow.rotation.z) * ease(14);
+
+    for (const leg of parts.legs) {
+      const swing = reduced ? 0 : Math.sin(t * 1.5 + leg.userData.phase) * 0.14;
+      leg.rotation.x += (swing + 0.12 - leg.rotation.x) * ease(5);
     }
 
-    for (const leg of robotLegs) {
-      leg.rotation.x = THREE.MathUtils.lerp(
-        leg.rotation.x,
-        0,
-        reduced ? 0.18 : 0.12,
-      );
+    // Antenna tip springs behind the head and pulses.
+    parts.antenna.rotation.z += (-parts.head.rotation.y * 0.5 - parts.antenna.rotation.z) * ease(5);
+    parts.antennaMaterial.emissiveIntensity = 1.4 + (reduced ? 0 : Math.sin(t * 2.6) * 0.8);
+    parts.chestMaterial.emissiveIntensity = 0.9 + (reduced ? 0 : Math.sin(t * 2.2) * 0.5);
+
+    // Jetpack
+    for (const flame of parts.flames) {
+      const flicker = reduced ? 0.5 : Math.sin(t * 17 + flame.userData.phase) * 0.5 + 0.5;
+      const jitter = reduced ? 0 : Math.sin(t * 31 + flame.userData.phase * 2) * 0.06;
+      flame.scale.set(1 + flicker * 0.08, 0.86 + flicker * 0.3 + jitter, 1);
     }
+    jetLight.intensity = reduced ? 2.4 : 2 + Math.sin(t * 13) * 0.5;
 
-    if (!reduced) {
-      const hoverBounce = Math.sin(elapsed * 1.55) * 0.07 * (1 - fallProgress);
-      robot.position.y = targetRobotY + hoverBounce;
-      robot.position.x = 0;
-      robot.rotation.y = THREE.MathUtils.lerp(robot.rotation.y, 0, 0.08);
-      robot.rotation.z = THREE.MathUtils.lerp(robot.rotation.z, 0, 0.08);
-      robot.rotation.x = THREE.MathUtils.lerp(robot.rotation.x, 0, 0.08);
-      const jetpackPower = 1;
-      jetLight.intensity = (2.6 + (Math.sin(elapsed * 9) * 0.5 + 0.5) * 1.5) * jetpackPower;
-
-      for (const thruster of thrusters) {
-        const flicker = Math.sin(elapsed * 14 + thruster.userData.phase) * 0.5 + 0.5;
-        const pulse = (0.96 + flicker * 0.86) * jetpackPower;
-        const sway = Math.sin(elapsed * 9.4 + thruster.userData.phase) * 0.06 * jetpackPower;
-        thruster.scale.set(1.02 + flicker * 0.08, pulse, 1.02);
-        thruster.rotation.z = sway;
-        thruster.position.y = -1.12 - flicker * 0.09;
-        thruster.position.z = -0.1;
-        thruster.visible = jetpackPower > 0.025;
-      }
-
-      if (robotEyes?.material) {
-        robotEyes.material.emissiveIntensity = 1 + (Math.sin(elapsed * 3.4) * 0.5 + 0.5) * 0.24;
-      }
-    } else {
-      robot.position.y = targetRobotY;
-      robot.position.x = 0;
-      robot.rotation.y = 0;
-      robot.rotation.z = 0;
-      robot.rotation.x = 0;
-      const jetpackPower = 1;
-      jetLight.intensity = 3 * jetpackPower;
-      for (const thruster of thrusters) {
-        thruster.scale.set(1.06, Math.max(jetpackPower * 1.5, 0.001), 1.02);
-        thruster.rotation.z = 0;
-        thruster.position.y = -1.14;
-        thruster.position.z = -0.1;
-        thruster.visible = jetpackPower > 0.025;
-      }
-    }
-
-    const blink = Math.pow(Math.max(0, Math.sin(elapsed * 1.35 + 0.4)), 48);
-    const blinkScale = THREE.MathUtils.clamp(1 - blink * 0.92, 0.08, 1);
-    for (const eye of eyeMeshes) {
-      eye.scale.y = blinkScale;
+    // The speech bubble follows the head.
+    parts.head.getWorldPosition(tempVectorA);
+    tempVectorA.y += 1.3;
+    tempVectorA.project(camera);
+    const rect = canvas.getBoundingClientRect();
+    const headX = Math.round((tempVectorA.x * 0.5 + 0.5) * rect.width);
+    const headY = Math.round((-tempVectorA.y * 0.5 + 0.5) * rect.height);
+    if (headX !== lastHeadX || headY !== lastHeadY) {
+      lastHeadX = headX;
+      lastHeadY = headY;
+      onHeadMove?.(headX, headY);
     }
 
     renderer.render(scene, camera);
-    requestAnimationFrame(animate);
+  }
+
+  function setHover(nextId, nextRobot) {
+    hoveredId = nextId;
+    robotHovered = nextRobot;
+    canvas.classList.toggle("is-pointing", Boolean(nextId) || nextRobot);
   }
 
   canvas.addEventListener("pointermove", (event) => {
     setPointerFromEvent(event);
-    onInputMode("mouse");
+    onInputMode?.(event.pointerType === "mouse" ? "mouse" : "touch");
 
-    if (dragState.active && dragState.pointerId === event.pointerId && !soloPhotoId) {
-      const deltaX = event.clientX - dragState.lastX;
-      dragState.lastX = event.clientX;
-      dragState.totalDelta += Math.abs(deltaX);
-      if (dragState.totalDelta > 4) {
-        dragState.moved = true;
+    if (drag.active && drag.pointerId === event.pointerId) {
+      const deltaX = event.clientX - drag.lastX;
+      drag.lastX = event.clientX;
+      drag.total += Math.abs(deltaX);
+      if (drag.total > 5) {
+        drag.moved = true;
+        setHover(null, false);
       }
-      if (dragState.moved && focusedId) {
-        clearFocus();
-      }
-      ringRotationTarget += deltaX * 0.0085;
-      updateHover(null);
+      const step = deltaX * 0.006;
+      ringRotationTarget += step;
+      ringVelocity = THREE.MathUtils.lerp(ringVelocity, step / Math.max(delta(), 1 / 120), 0.3);
       return;
     }
 
-    updateHover(pickPhoto()?.photoId ?? null);
+    if (event.pointerType === "mouse") {
+      const hit = pick();
+      setHover(hit?.type === "photo" ? hit.id : null, hit?.type === "robot");
+    }
   });
+
+  let lastMoveTime = performance.now();
+  function delta() {
+    const now = performance.now();
+    const value = (now - lastMoveTime) / 1000;
+    lastMoveTime = now;
+    return value;
+  }
 
   canvas.addEventListener("pointerdown", (event) => {
     setPointerFromEvent(event);
-    onInputMode(prefersCoarsePointer ? "touch" : "mouse");
-    dragState.active = true;
-    dragState.pointerId = event.pointerId;
-    dragState.lastX = event.clientX;
-    dragState.moved = false;
-    dragState.totalDelta = 0;
+    drag.active = true;
+    drag.pointerId = event.pointerId;
+    drag.lastX = event.clientX;
+    drag.moved = false;
+    drag.total = 0;
+    ringVelocity = 0;
+    lastMoveTime = performance.now();
     canvas.setPointerCapture?.(event.pointerId);
   });
 
-  function endPointerInteraction(event) {
-    if (!dragState.active || dragState.pointerId !== event.pointerId) {
+  function endDrag(event, cancelled) {
+    if (!drag.active || drag.pointerId !== event.pointerId) {
       return;
     }
-
-    setPointerFromEvent(event);
-    const wasMoved = dragState.moved;
-    dragState.active = false;
-    dragState.pointerId = null;
+    drag.active = false;
     canvas.releasePointerCapture?.(event.pointerId);
-
-    if (wasMoved) {
+    ringVelocity = THREE.MathUtils.clamp(ringVelocity, -3, 3);
+    if (cancelled || drag.moved) {
       return;
     }
-
-    const pick = pickPhoto();
-    if (pick?.photoId) {
-      onPhotoSelect(pick.photoId);
-    } else if (focusedId) {
-      clearFocus();
+    setPointerFromEvent(event);
+    const hit = pick();
+    if (hit?.type === "photo") {
+      happyUntil = timer.getElapsed() + 1.2;
+      onPhotoSelect?.(hit.id, cardById.get(hit.id));
+    } else if (hit?.type === "robot") {
+      wave();
+      onRobotClick?.();
     }
   }
 
-  canvas.addEventListener("pointerup", endPointerInteraction);
-  canvas.addEventListener("pointercancel", endPointerInteraction);
-
-  canvas.addEventListener("pointerleave", () => {
-    dragState.active = false;
-    updateHover(null);
+  canvas.addEventListener("pointerup", (event) => endDrag(event, false));
+  canvas.addEventListener("pointercancel", (event) => endDrag(event, true));
+  canvas.addEventListener("pointerleave", (event) => {
+    if (event.pointerType === "mouse") {
+      setHover(null, false);
+      pointerNdc.set(0, 0);
+    }
   });
-
-  canvas.addEventListener(
-    "touchstart",
-    () => {
-      onInputMode("touch");
-    },
-    { passive: true },
-  );
 
   window.addEventListener("resize", resize);
   resize();
-  animate();
+  setTimeout(() => wave(2.6), 700);
+  frameHandle = requestAnimationFrame(animate);
 
   return {
-    focusPhoto,
-    clearFocus,
-    spinToMonth(monthId) {
-      const month = months.find((item) => item.id === monthId);
-      const targetPhoto = month?.photos?.[0];
-      if (!targetPhoto) {
+    wave,
+    setActive(next) {
+      if (next === active) {
         return;
       }
-      focusedId = null;
-      ringRotationTarget = -photoGroups.get(targetPhoto.id).userData.baseAngle;
-      activeAlbumId = targetPhoto.albumId ?? activeAlbumId;
-      onAlbumChange(activeAlbumId);
+      active = next;
+      if (active && !frameHandle) {
+        timer.reset?.();
+        frameHandle = requestAnimationFrame(animate);
+      } else if (!active && frameHandle) {
+        cancelAnimationFrame(frameHandle);
+        frameHandle = 0;
+      }
     },
-    setSoloPhoto(photoId) {
-      soloPhotoId = photoId;
-    },
-    clearSoloView() {
-      soloPhotoId = null;
-    },
-    setScrollProgress,
-    setReducedMotion(nextValue) {
-      reduced = nextValue;
+    setReducedMotion(next) {
+      reduced = next;
     },
   };
 }
 
+/** Photos have soft corners and nothing around them. */
+const cornerMasks = new Map();
+function getCornerMask(aspect) {
+  const key = aspect.toFixed(2);
+  if (cornerMasks.has(key)) {
+    return cornerMasks.get(key);
+  }
+  const width = 256;
+  const height = Math.round(width / aspect);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "#fff";
+  context.beginPath();
+  context.roundRect(0, 0, width, height, width * 0.035);
+  context.fill();
+  const texture = new THREE.CanvasTexture(canvas);
+  cornerMasks.set(key, texture);
+  return texture;
+}
+
 function createPhotoCard(photo, textureLoader, prefersCoarsePointer) {
   const card = new THREE.Group();
-  const frameWidth = photo.orientation === "landscape" ? 2.55 : 2.02;
-  const imageHeight = frameWidth / photo.aspect;
-  const frameHeight = imageHeight + 0.06;
-
-  const frameMaterial = new THREE.MeshStandardMaterial({
-    color: 0xccd5e1,
-    roughness: 0.24,
-    metalness: 0.08,
-    transparent: true,
-    opacity: 0.08,
-  });
-
-  const frame = new THREE.Mesh(
-    new RoundedBoxGeometry(frameWidth + 0.06, frameHeight + 0.06, 0.035, 4, 0.035),
-    frameMaterial,
-  );
-  frame.name = "frame";
-  card.add(frame);
+  const width = photo.orientation === "landscape" ? 2.35 : 1.78;
+  const height = width / photo.aspect;
 
   const texture = textureLoader.load(photo.src);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = prefersCoarsePointer ? 2 : 8;
 
-  const imageMaterial = new THREE.MeshBasicMaterial({
+  const material = new THREE.MeshBasicMaterial({
     map: texture,
-    toneMapped: false,
+    alphaMap: getCornerMask(photo.aspect),
     transparent: true,
-    opacity: 1,
+    toneMapped: false,
   });
-  const imagePlane = new THREE.Mesh(new THREE.PlaneGeometry(frameWidth, imageHeight), imageMaterial);
-  imagePlane.position.z = 0.026;
-  imagePlane.name = "imagePlane";
-  imagePlane.userData.photoId = photo.id;
-  card.add(imagePlane);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+  plane.userData.photoId = photo.id;
+  card.add(plane);
 
+  card.userData.photo = photo;
+  card.userData.plane = plane;
+  card.userData.material = material;
   return card;
-}
-
-function createStars(prefersCoarsePointer) {
-  const starGeometry = new THREE.BufferGeometry();
-  const count = prefersCoarsePointer ? 140 : 220;
-  const positions = new Float32Array(count * 3);
-
-  for (let index = 0; index < count; index += 1) {
-    const radius = 9 + Math.random() * 15;
-    const angle = Math.random() * TAU;
-    positions[index * 3] = Math.cos(angle) * radius;
-    positions[index * 3 + 1] = Math.random() * 16 - 3;
-    positions[index * 3 + 2] = Math.sin(angle) * radius;
-  }
-
-  starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-
-  return new THREE.Points(
-    starGeometry,
-    new THREE.PointsMaterial({
-      size: prefersCoarsePointer ? 0.035 : 0.05,
-      color: 0xf8d8b6,
-      transparent: true,
-      opacity: 0.3,
-      depthWrite: false,
-    }),
-  );
-}
-
-function lerpAngle(from, to, alpha) {
-  return from + Math.atan2(Math.sin(to - from), Math.cos(to - from)) * alpha;
 }
 
 function createRobot() {
   const root = new THREE.Group();
   const body = new THREE.Group();
-  body.name = "robotBody";
   root.add(body);
 
-  const shellMaterial = new THREE.MeshStandardMaterial({
-    color: 0xf0ece6,
+  const shell = new THREE.MeshPhysicalMaterial({
+    color: 0xf3efe9,
+    roughness: 0.42,
+    metalness: 0.04,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.3,
+  });
+  const shellShade = new THREE.MeshPhysicalMaterial({
+    color: 0xd8d0c5,
     roughness: 0.5,
-    metalness: 0.08,
+    metalness: 0.05,
+    clearcoat: 0.3,
   });
-  const shellShadeMaterial = new THREE.MeshStandardMaterial({
-    color: 0xd6cfc6,
-    roughness: 0.56,
-    metalness: 0.08,
-  });
-  const darkMaterial = new THREE.MeshStandardMaterial({
-    color: 0x15181f,
-    roughness: 0.62,
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1a1d24, roughness: 0.55, metalness: 0.2 });
+  const visor = new THREE.MeshPhysicalMaterial({
+    color: 0x090b10,
+    roughness: 0.12,
     metalness: 0.2,
-  });
-  const accentMaterial = new THREE.MeshStandardMaterial({
-    color: 0x7f8ca3,
-    roughness: 0.44,
-    metalness: 0.28,
+    clearcoat: 1,
+    clearcoatRoughness: 0.08,
   });
   const eyeMaterial = new THREE.MeshStandardMaterial({
-    color: 0x0d1117,
-    emissive: new THREE.Color(0xd2f8ff),
-    emissiveIntensity: 1,
-  });
-  const neonTop = new THREE.MeshStandardMaterial({
-    color: 0x7bf5ff,
-    emissive: new THREE.Color(0x7bf5ff),
-    emissiveIntensity: 1.8,
-    roughness: 0.28,
-    metalness: 0.12,
-  });
-  const neonRight = new THREE.MeshStandardMaterial({
-    color: 0xff8b7d,
-    emissive: new THREE.Color(0xff8b7d),
+    color: 0xdffbff,
+    emissive: new THREE.Color(0xbff4ff),
     emissiveIntensity: 1.6,
-    roughness: 0.28,
-    metalness: 0.12,
   });
-  const neonBottom = new THREE.MeshStandardMaterial({
-    color: 0xeaf36e,
-    emissive: new THREE.Color(0xeaf36e),
-    emissiveIntensity: 1.45,
-    roughness: 0.32,
-    metalness: 0.1,
-  });
-  const neonLeft = new THREE.MeshStandardMaterial({
-    color: 0x9487ff,
-    emissive: new THREE.Color(0x9487ff),
-    emissiveIntensity: 1.55,
-    roughness: 0.28,
-    metalness: 0.12,
-  });
-  const flameCoreMaterial = new THREE.MeshBasicMaterial({ color: 0xfff7dd });
-  const flameMidMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffd36b,
+  const cheekMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff8f9a,
     transparent: true,
-    opacity: 0.96,
+    opacity: 0.4,
+    depthWrite: false,
   });
-  const flameOuterMaterial = new THREE.MeshBasicMaterial({
-    color: 0xff8a3c,
-    transparent: true,
-    opacity: 0.9,
+  const antennaMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffc78a,
+    emissive: new THREE.Color(0xffb46a),
+    emissiveIntensity: 1.6,
+    roughness: 0.3,
   });
-  const jetpackShellMaterial = new THREE.MeshStandardMaterial({
-    color: 0x8f99a8,
-    roughness: 0.46,
-    metalness: 0.18,
+  const chestMaterial = new THREE.MeshStandardMaterial({
+    color: 0x9ff2ff,
+    emissive: new THREE.Color(0x7be9ff),
+    emissiveIntensity: 1,
+    roughness: 0.3,
   });
-  const jetpackDarkMaterial = new THREE.MeshStandardMaterial({
-    color: 0x4e5763,
-    roughness: 0.52,
-    metalness: 0.22,
-  });
+  const packMaterial = new THREE.MeshStandardMaterial({ color: 0x9aa3b1, roughness: 0.45, metalness: 0.25 });
+  const packDark = new THREE.MeshStandardMaterial({ color: 0x4a525e, roughness: 0.5, metalness: 0.25 });
+  const neon = [0x7bf5ff, 0xff9b8c, 0xeaf36e, 0xa597ff].map(
+    (color) =>
+      new THREE.MeshStandardMaterial({
+        color,
+        emissive: new THREE.Color(color),
+        emissiveIntensity: 1.25,
+        roughness: 0.3,
+      }),
+  );
 
-  const torso = new THREE.Mesh(new RoundedBoxGeometry(0.92, 1.2, 0.66, 6, 0.14), shellMaterial);
-  torso.position.y = 0.7;
+  // Torso
+  const torso = new THREE.Mesh(new RoundedBoxGeometry(0.9, 1.04, 0.66, 6, 0.24), shell);
+  torso.position.y = 0.74;
   body.add(torso);
 
-  const torsoPanel = new THREE.Mesh(new RoundedBoxGeometry(0.56, 0.84, 0.08, 4, 0.08), shellShadeMaterial);
-  torsoPanel.position.set(0, 0.72, 0.35);
-  body.add(torsoPanel);
+  const belly = new THREE.Mesh(new RoundedBoxGeometry(0.54, 0.6, 0.08, 4, 0.1), shellShade);
+  belly.position.set(0, 0.68, 0.33);
+  body.add(belly);
 
-  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 14), eyeMaterial);
-  chest.position.set(0, 1.02, 0.37);
-  body.add(chest);
+  const chestLight = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 16), chestMaterial);
+  chestLight.position.set(0, 0.86, 0.38);
+  body.add(chestLight);
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 12), darkMaterial);
-  neck.position.y = 1.42;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.16, 16), dark);
+  neck.position.y = 1.32;
   body.add(neck);
 
+  // Head
   const head = new THREE.Group();
-  head.name = "robotHead";
-  head.position.y = 1.92;
+  head.position.y = 1.9;
   body.add(head);
 
-  const helmetBack = new THREE.Mesh(new RoundedBoxGeometry(1.48, 1.44, 1.34, 8, 0.24), shellShadeMaterial);
-  helmetBack.position.set(0, 0.06, -0.02);
-  head.add(helmetBack);
+  const helmet = new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.34, 1.28, 8, 0.36), shell);
+  helmet.position.set(0, 0.04, 0);
+  head.add(helmet);
 
-  const helmetTop = new THREE.Mesh(new RoundedBoxGeometry(1.34, 0.46, 0.98, 6, 0.16), darkMaterial);
-  helmetTop.position.set(0, 0.48, -0.04);
-  head.add(helmetTop);
+  const helmetCap = new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.3, 0.96, 6, 0.14), shellShade);
+  helmetCap.position.set(0, 0.62, -0.06);
+  head.add(helmetCap);
 
-  const faceFrame = new THREE.Mesh(new RoundedBoxGeometry(1.4, 1.34, 0.34, 8, 0.22), shellMaterial);
-  faceFrame.position.set(0, -0.02, 0.46);
-  head.add(faceFrame);
-
-  const screen = new THREE.Mesh(new RoundedBoxGeometry(0.98, 0.94, 0.09, 6, 0.12), darkMaterial);
-  screen.position.set(0, -0.03, 0.63);
+  const screen = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.92, 0.12, 8, 0.2), visor);
+  screen.position.set(0, -0.02, 0.6);
   head.add(screen);
 
-  const topGlow = new THREE.Mesh(new RoundedBoxGeometry(0.94, 0.12, 0.06, 4, 0.05), neonTop);
-  topGlow.position.set(0, 0.48, 0.64);
-  head.add(topGlow);
-
-  const bottomGlow = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.11, 0.06, 4, 0.05), neonBottom);
-  bottomGlow.position.set(0, -0.52, 0.64);
-  head.add(bottomGlow);
-
-  const leftGlow = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.86, 0.06, 4, 0.05), neonLeft);
-  leftGlow.position.set(-0.52, -0.02, 0.64);
-  head.add(leftGlow);
-
-  const rightGlow = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.86, 0.06, 4, 0.05), neonRight);
-  rightGlow.position.set(0.52, -0.02, 0.64);
-  head.add(rightGlow);
-
-  const eyes = new THREE.Group();
-  eyes.name = "robotEyes";
-  head.add(eyes);
-
-  const eyeLeft = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), eyeMaterial);
-  eyeLeft.scale.set(1, 1.1, 0.52);
-  eyeLeft.position.set(-0.13, -0.01, 0.69);
-  eyes.add(eyeLeft);
-
-  const eyeRight = eyeLeft.clone();
-  eyeRight.position.x = 0.13;
-  eyes.add(eyeRight);
-
-  const earLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.14, 24), shellShadeMaterial);
-  earLeft.rotation.z = Math.PI / 2;
-  earLeft.position.set(-0.84, -0.02, 0.04);
-  head.add(earLeft);
-
-  const earRight = earLeft.clone();
-  earRight.position.x = 0.8;
-  head.add(earRight);
-
-  const earCapLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.07, 18), darkMaterial);
-  earCapLeft.rotation.z = Math.PI / 2;
-  earCapLeft.position.set(-0.9, -0.02, 0.06);
-  head.add(earCapLeft);
-
-  const earCapRight = earCapLeft.clone();
-  earCapRight.position.x = 0.88;
-  head.add(earCapRight);
-
-  const antennaLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.28, 10), shellShadeMaterial);
-  antennaLeft.position.set(-0.34, 0.72, -0.08);
-  antennaLeft.rotation.z = 0.25;
-  head.add(antennaLeft);
-
-  const antennaRight = antennaLeft.clone();
-  antennaRight.position.x = 0.34;
-  antennaRight.rotation.z = -0.25;
-  head.add(antennaRight);
-
-  const tipLeft = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 16), shellMaterial);
-  tipLeft.position.set(-0.4, 0.84, -0.08);
-  head.add(tipLeft);
-
-  const tipRight = tipLeft.clone();
-  tipRight.position.x = 0.44;
-  head.add(tipRight);
-
-  const backpack = new THREE.Group();
-  backpack.position.set(0, 0.9, -0.4);
-  backpack.scale.setScalar(1.12);
-  body.add(backpack);
-
-  const centralPack = new THREE.Mesh(new RoundedBoxGeometry(0.72, 1.06, 0.28, 6, 0.1), jetpackDarkMaterial);
-  centralPack.position.set(0, 0.04, 0.06);
-  backpack.add(centralPack);
-
-  const packShell = new THREE.Mesh(new RoundedBoxGeometry(0.58, 0.86, 0.12, 4, 0.06), jetpackShellMaterial);
-  packShell.position.set(0, 0.02, 0.24);
-  backpack.add(packShell);
-
-  const packRib = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.04, 0.04), accentMaterial);
-  packRib.position.set(0, 0.18, 0.31);
-  backpack.add(packRib);
-
-  const packRibMid = packRib.clone();
-  packRibMid.position.y = 0.0;
-  backpack.add(packRibMid);
-
-  const packRibLow = packRib.clone();
-  packRibLow.position.y = -0.18;
-  backpack.add(packRibLow);
-
-  const tankCapGeometry = new THREE.SphereGeometry(0.17, 18, 18, 0, TAU, 0, Math.PI / 2);
-  const sideHoseGeometry = new THREE.TorusGeometry(0.25, 0.024, 10, 28, Math.PI * 0.92);
-  const thrusters = [];
-  for (const x of [-0.46, 0.46]) {
-    const tank = new THREE.Group();
-    tank.position.set(x, 0.06, 0.02);
-    backpack.add(tank);
-
-    const canister = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.92, 20), jetpackShellMaterial);
-    tank.add(canister);
-
-    const bandTop = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.018, 8, 22), shellShadeMaterial);
-    bandTop.rotation.x = Math.PI / 2;
-    bandTop.position.y = 0.18;
-    tank.add(bandTop);
-
-    const bandBottom = bandTop.clone();
-    bandBottom.position.y = -0.16;
-    tank.add(bandBottom);
-
-    const tankTop = new THREE.Mesh(tankCapGeometry, jetpackShellMaterial);
-    tankTop.rotation.x = Math.PI;
-    tankTop.position.y = 0.46;
-    tank.add(tankTop);
-
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.1, 18), jetpackDarkMaterial);
-    cap.position.y = 0.52;
-    tank.add(cap);
-
-    const hose = new THREE.Mesh(sideHoseGeometry, new THREE.MeshStandardMaterial({
-      color: 0xbd7b35,
-      roughness: 0.56,
-      metalness: 0.12,
-    }));
-    hose.rotation.z = x < 0 ? Math.PI * 0.12 : -Math.PI * 0.12;
-    hose.position.set(x * 0.46, -0.02, 0.28);
-    backpack.add(hose);
-
-    const nozzleNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.18, 16), jetpackDarkMaterial);
-    nozzleNeck.position.y = -0.52;
-    tank.add(nozzleNeck);
-
-    const nozzleBell = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.13, 0.34, 18), jetpackShellMaterial);
-    nozzleBell.position.y = -0.76;
-    tank.add(nozzleBell);
-
-    const nozzleLip = new THREE.Mesh(new THREE.TorusGeometry(0.205, 0.018, 8, 22), jetpackDarkMaterial);
-    nozzleLip.rotation.x = Math.PI / 2;
-    nozzleLip.position.y = -0.91;
-    tank.add(nozzleLip);
-
-    const flame = new THREE.Group();
-    flame.position.set(x, -1.08, -0.08);
-    flame.userData.phase = x < 0 ? 0 : 1.1;
-
-    const outerMain = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.12, 18), flameOuterMaterial);
-    outerMain.position.y = -0.5;
-    outerMain.rotation.x = Math.PI;
-    flame.add(outerMain);
-
-    const outerLeft = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.72, 16), flameOuterMaterial);
-    outerLeft.position.set(-0.09, -0.38, 0.01);
-    outerLeft.rotation.set(Math.PI, 0, -0.2);
-    flame.add(outerLeft);
-
-    const outerRight = outerLeft.clone();
-    outerRight.position.x = 0.09;
-    outerRight.rotation.z = 0.2;
-    flame.add(outerRight);
-
-    const midMain = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.82, 16), flameMidMaterial);
-    midMain.position.y = -0.34;
-    midMain.rotation.x = Math.PI;
-    flame.add(midMain);
-
-    const coreMain = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.56, 14), flameCoreMaterial);
-    coreMain.position.y = -0.24;
-    coreMain.rotation.x = Math.PI;
-    flame.add(coreMain);
-
-    const flameCap = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 14), flameMidMaterial);
-    flameCap.scale.set(1, 0.6, 1);
-    flameCap.position.y = 0.02;
-    flame.add(flameCap);
-
-    const exhaustGlow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), flameCoreMaterial);
-    exhaustGlow.scale.set(1.1, 0.42, 1.1);
-    exhaustGlow.position.y = -0.02;
-    flame.add(exhaustGlow);
-
-    backpack.add(flame);
-    thrusters.push(flame);
+  // A thin light strip in four colours framing the visor - the old neon bars, slimmed.
+  const stripDepth = 0.04;
+  const strips = [
+    { size: [0.62, 0.045], pos: [0, 0.42], mat: neon[0] },
+    { size: [0.045, 0.46], pos: [0.52, -0.02], mat: neon[1] },
+    { size: [0.62, 0.045], pos: [0, -0.46], mat: neon[2] },
+    { size: [0.045, 0.46], pos: [-0.52, -0.02], mat: neon[3] },
+  ];
+  for (const strip of strips) {
+    const mesh = new THREE.Mesh(
+      new RoundedBoxGeometry(strip.size[0], strip.size[1], stripDepth, 2, 0.02),
+      strip.mat,
+    );
+    mesh.position.set(strip.pos[0], strip.pos[1], 0.665);
+    head.add(mesh);
   }
 
-  const armLeft = createArm(shellMaterial, darkMaterial, accentMaterial);
-  armLeft.position.set(-0.53, 0.92, 0.04);
-  armLeft.userData.side = -1;
-  body.add(armLeft);
+  const faceZ = 0.668;
+  const eyeGeometry = new THREE.CapsuleGeometry(0.075, 0.1, 6, 16);
+  const eyes = [-0.2, 0.2].map((x) => {
+    const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    eye.scale.z = 0.35;
+    eye.position.set(x, 0.04, faceZ);
+    head.add(eye);
+    return eye;
+  });
 
-  const armRight = createArm(shellMaterial, darkMaterial, accentMaterial);
-  armRight.position.set(0.53, 0.92, 0.04);
-  armRight.scale.x = -1;
-  armRight.userData.side = 1;
-  body.add(armRight);
+  // ^ ^ for when it's pleased
+  const arcGeometry = new THREE.TorusGeometry(0.1, 0.03, 8, 24, Math.PI);
+  const happyEyes = [-0.2, 0.2].map((x) => {
+    const arc = new THREE.Mesh(arcGeometry, eyeMaterial);
+    arc.position.set(x, 0.0, faceZ);
+    arc.scale.setScalar(0.001);
+    arc.visible = false;
+    head.add(arc);
+    return arc;
+  });
 
-  const hip = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.12, 0.18, 4, 0.04), darkMaterial);
-  hip.position.y = -0.02;
-  body.add(hip);
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.022, 8, 20, Math.PI), eyeMaterial);
+  smile.rotation.z = Math.PI;
+  smile.position.set(0, -0.2, faceZ);
+  head.add(smile);
 
-  const legLeft = createLeg(shellMaterial, darkMaterial, accentMaterial);
-  legLeft.position.set(-0.14, -0.18, 0);
-  legLeft.userData.side = -1;
-  body.add(legLeft);
+  const cheekGeometry = new THREE.CircleGeometry(0.07, 20);
+  for (const x of [-0.34, 0.34]) {
+    const cheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
+    cheek.scale.y = 0.6;
+    cheek.position.set(x, -0.16, faceZ + 0.001);
+    head.add(cheek);
+  }
 
-  const legRight = createLeg(shellMaterial, darkMaterial, accentMaterial);
-  legRight.position.set(0.14, -0.18, 0);
-  legRight.userData.side = 1;
-  body.add(legRight);
+  for (const x of [-0.79, 0.79]) {
+    const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 28), shellShade);
+    ear.rotation.z = Math.PI / 2;
+    ear.position.set(x, 0, 0.02);
+    head.add(ear);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 20), dark);
+    cap.rotation.z = Math.PI / 2;
+    cap.position.set(x * 1.06, 0, 0.02);
+    head.add(cap);
+  }
 
-  root.userData.thrusters = thrusters;
-  root.userData.eyeMeshes = [eyeLeft, eyeRight];
-  root.userData.arms = [armLeft, armRight];
-  root.userData.legs = [legLeft, legRight];
+  const antenna = new THREE.Group();
+  antenna.position.set(0, 0.76, -0.06);
+  head.add(antenna);
+  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.34, 10), dark);
+  stalk.position.y = 0.17;
+  antenna.add(stalk);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.075, 20, 20), antennaMaterial);
+  bulb.position.y = 0.38;
+  antenna.add(bulb);
+
+  // Jetpack
+  const pack = new THREE.Group();
+  pack.position.set(0, 0.86, -0.46);
+  body.add(pack);
+  const packBody = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.9, 0.3, 6, 0.12), packDark);
+  pack.add(packBody);
+  const flames = [];
+  for (const x of [-0.42, 0.42]) {
+    const tank = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.6, 8, 20), packMaterial);
+    tank.position.set(x, 0.02, 0);
+    pack.add(tank);
+    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 0.18, 20, 1, true), packDark);
+    nozzle.position.set(x, -0.55, 0);
+    pack.add(nozzle);
+
+    const flame = createFlame();
+    flame.position.set(x, -0.64, 0);
+    flame.userData.phase = x < 0 ? 0 : 1.7;
+    pack.add(flame);
+    flames.push(flame);
+  }
+
+  // Arms: shoulder pivot -> upper arm -> elbow pivot -> forearm and mitten.
+  const arms = [-1, 1].map((side) => {
+    const arm = new THREE.Group();
+    arm.position.set(side * 0.53, 1.08, 0.02);
+    body.add(arm);
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.13, 18, 18), shellShade);
+    arm.add(shoulder);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.24, 6, 16), shell);
+    upper.position.y = -0.22;
+    arm.add(upper);
+    const elbow = new THREE.Group();
+    elbow.position.y = -0.4;
+    arm.add(elbow);
+    const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.18, 6, 16), shell);
+    fore.position.y = -0.14;
+    elbow.add(fore);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.12, 18, 18), shellShade);
+    hand.scale.set(1, 0.9, 0.9);
+    hand.position.y = -0.33;
+    elbow.add(hand);
+    arm.userData.elbow = elbow;
+    // Mirror the left arm so positive z swings either arm outward.
+    if (side < 0) {
+      arm.scale.x = -1;
+    }
+    return arm;
+  });
+
+  // Legs dangle while it hovers.
+  const legs = [-1, 1].map((side) => {
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.2, 0.22, 0);
+    body.add(leg);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.16, 6, 14), dark);
+    thigh.position.y = -0.16;
+    leg.add(thigh);
+    const boot = new THREE.Mesh(new RoundedBoxGeometry(0.26, 0.2, 0.32, 4, 0.09), shell);
+    boot.position.set(0, -0.4, 0.04);
+    leg.add(boot);
+    leg.userData.phase = side < 0 ? 0 : 1.3;
+    return leg;
+  });
+
+  Object.assign(root.userData, {
+    body,
+    head,
+    eyes,
+    happyEyes,
+    smile,
+    cheekMaterial,
+    antenna,
+    antennaMaterial,
+    chestMaterial,
+    arms,
+    legs,
+    flames,
+    faceHappy: 0,
+  });
   return root;
 }
 
-function createArm(suitMaterial, trimMaterial, copperMaterial) {
-  const group = new THREE.Group();
-
-  const upper = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.72, 0.2, 4, 0.09), suitMaterial);
-  upper.position.set(0.2, -0.28, 0.03);
-  upper.rotation.z = -0.5;
-  group.add(upper);
-
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 14), trimMaterial);
-  hand.scale.set(1, 0.84, 1.1);
-  hand.position.set(0.42, -0.55, 0.08);
-  group.add(hand);
-
-  return group;
-}
-
-function createLeg(suitMaterial, trimMaterial, copperMaterial) {
-  const group = new THREE.Group();
-
-  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.24, 12), trimMaterial);
-  upper.position.y = -0.06;
-  group.add(upper);
-
-  const knee = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 12), copperMaterial);
-  knee.position.y = -0.2;
-  group.add(knee);
-
-  const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.2, 12), trimMaterial);
-  lower.position.y = -0.36;
-  group.add(lower);
-
-  const boot = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.16, 0.24, 4, 0.05), suitMaterial);
-  boot.position.set(0, -0.54, 0.03);
-  group.add(boot);
-
-  return group;
-}
-
-function createWallMessage() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 320;
-  const context = canvas.getContext("2d");
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "rgba(255,255,255,0.88)";
-  context.font = "700 98px 'Space Grotesk', sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText("Stay tuned for more", canvas.width / 2, canvas.height / 2 - 18);
-
-  context.fillStyle = "rgba(255,191,125,0.9)";
-  context.font = "500 28px 'Space Grotesk', sans-serif";
-  context.fillText("New frames are on the way.", canvas.width / 2, canvas.height / 2 + 62);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-
-  return new THREE.Mesh(
-    new THREE.PlaneGeometry(5.8, 1.8),
-    new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      toneMapped: false,
-    }),
-  );
+/** Soft additive cones: a hot core inside a wider glow. */
+function createFlame() {
+  const flame = new THREE.Group();
+  const layers = [
+    { radius: 0.15, length: 0.9, color: 0xff7a2e, opacity: 0.35 },
+    { radius: 0.1, length: 0.66, color: 0xffb65c, opacity: 0.55 },
+    { radius: 0.055, length: 0.42, color: 0xfff1d0, opacity: 0.9 },
+  ];
+  for (const layer of layers) {
+    const mesh = new THREE.Mesh(
+      new THREE.ConeGeometry(layer.radius, layer.length, 20, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: layer.color,
+        transparent: true,
+        opacity: layer.opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    mesh.rotation.x = Math.PI;
+    mesh.position.y = -layer.length / 2;
+    mesh.userData.isFlame = true;
+    flame.add(mesh);
+  }
+  return flame;
 }

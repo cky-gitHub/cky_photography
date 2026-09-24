@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
@@ -5,14 +6,35 @@ import sharp from "sharp";
 const root = process.cwd();
 const sourceDir = path.join(root, "Photos");
 const publicDir = path.join(root, "public", "photos");
+const thumbDir = path.join(publicDir, "thumb");
 const smallDir = path.join(publicDir, "small");
 const largeDir = path.join(publicDir, "large");
 const manifestFile = path.join(root, "src", "generated", "photos.js");
 
-const smallMaxEdge = 1600;
-const largeMaxEdge = 2600;
-const jpegQuality = 84;
+// thumb feeds the grid, small the ring textures, large the viewer and downloads.
+const sizes = [
+  { dir: thumbDir, suffix: "", maxEdge: 900, quality: 80, key: "thumb" },
+  { dir: smallDir, suffix: "", maxEdge: 1600, quality: 84, key: "src" },
+  { dir: largeDir, suffix: "-large", maxEdge: 2600, quality: 86, key: "srcLarge" },
+];
 const supportedImagePattern = /\.(jpe?g|png|webp)$/i;
+
+/** The ring's curated set. Its files are copies of country photos, not a country. */
+const RING_ALBUM_ID = "best";
+
+/**
+ * Folder name -> country. Folder names are typed by hand, so this is where
+ * spelling gets fixed and where the ISO code the world map will need lives.
+ * A folder missing here still works; it just shows its own name and no code.
+ */
+const COUNTRIES = {
+  netherlands: { name: "Netherlands", iso: "NL" },
+  kazakhstan: { name: "Kazakhstan", iso: "KZ" },
+  germany: { name: "Germany", iso: "DE" },
+  switzerland: { name: "Switzerland", iso: "CH" },
+  morocco: { name: "Morocco", iso: "MA" },
+  morrocco: { name: "Morocco", iso: "MA" },
+};
 
 function toSlug(fileName) {
   return path
@@ -20,10 +42,6 @@ function toSlug(fileName) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-function toLabel(index, orientation) {
-  return `Frame ${String(index + 1).padStart(2, "0")} - ${orientation === "landscape" ? "Horizon" : "Portrait"}`;
 }
 
 function isCoverFile(fileName) {
@@ -57,23 +75,6 @@ function parseCapturedDate(fileName) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function getMonthParts(date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  return {
-    monthId: `${year}-${month}`,
-    monthLabel: new Intl.DateTimeFormat("en-US", {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(date),
-  };
-}
-
-async function ensureDir(target) {
-  await fs.mkdir(target, { recursive: true });
-}
-
 async function collectSourcePhotos() {
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   const sources = [];
@@ -83,7 +84,7 @@ async function collectSourcePhotos() {
       const albumDir = path.join(sourceDir, entry.name);
       const albumEntries = await fs.readdir(albumDir, { withFileTypes: true });
       const albumId = toSlug(entry.name) || "album";
-      const albumLabel = toAlbumLabel(entry.name);
+      const country = COUNTRIES[albumId] ?? null;
 
       for (const albumEntry of albumEntries) {
         if (!albumEntry.isFile() || !supportedImagePattern.test(albumEntry.name)) {
@@ -94,7 +95,8 @@ async function collectSourcePhotos() {
           file: albumEntry.name,
           absolutePath: path.join(albumDir, albumEntry.name),
           albumId,
-          albumLabel,
+          albumLabel: country?.name ?? toAlbumLabel(entry.name),
+          countryCode: country?.iso ?? null,
         });
       }
 
@@ -110,79 +112,128 @@ async function collectSourcePhotos() {
       absolutePath: path.join(sourceDir, entry.name),
       albumId: "unsorted",
       albumLabel: "Unsorted",
+      countryCode: null,
     });
   }
 
   return sources;
 }
 
+/** Re-encoding 60+ photos three times is slow; only redo what changed. */
+async function isFresh(target, sourceMtimeMs) {
+  try {
+    const stat = await fs.stat(target);
+    return stat.mtimeMs >= sourceMtimeMs;
+  } catch {
+    return false;
+  }
+}
+
 async function prepare() {
-  await ensureDir(smallDir);
-  await ensureDir(largeDir);
-  await ensureDir(path.dirname(manifestFile));
+  for (const size of sizes) {
+    await fs.mkdir(size.dir, { recursive: true });
+  }
+  await fs.mkdir(path.dirname(manifestFile), { recursive: true });
 
   const sourcePhotos = await collectSourcePhotos();
-
   const preparedPhotos = [];
+  const written = new Set();
 
   for (const sourcePhoto of sourcePhotos) {
-    const { file, absolutePath, albumId, albumLabel } = sourcePhoto;
+    const { file, absolutePath, albumId, albumLabel, countryCode } = sourcePhoto;
+    const buffer = await fs.readFile(absolutePath);
     const stats = await fs.stat(absolutePath);
     const capturedDate = parseCapturedDate(file) ?? stats.mtime;
     const slug = `${albumId}-${toSlug(file)}`;
-    const metadata = await sharp(absolutePath).metadata();
-    const orientation = metadata.width >= metadata.height ? "landscape" : "portrait";
-    const smallName = `${slug}.jpg`;
-    const largeName = `${slug}-large.jpg`;
-    const monthParts = getMonthParts(capturedDate);
 
-    await sharp(absolutePath)
-      .rotate()
-      .resize({ width: smallMaxEdge, height: smallMaxEdge, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: jpegQuality, mozjpeg: true })
-      .toFile(path.join(smallDir, smallName));
+    // Dimensions after EXIF rotation - the raw metadata reports the sensor's
+    // orientation, which turns a portrait phone shot into a landscape box.
+    const metadata = await sharp(buffer).metadata();
+    const rotated = (metadata.orientation ?? 1) >= 5;
+    const width = rotated ? metadata.height : metadata.width;
+    const height = rotated ? metadata.width : metadata.height;
 
-    await sharp(absolutePath)
-      .rotate()
-      .resize({ width: largeMaxEdge, height: largeMaxEdge, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: jpegQuality, mozjpeg: true })
-      .toFile(path.join(largeDir, largeName));
+    const paths = {};
+    for (const size of sizes) {
+      const name = `${slug}${size.suffix}.jpg`;
+      const target = path.join(size.dir, name);
+      written.add(target);
+      paths[size.key] = `photos/${path.basename(size.dir)}/${name}`;
+      if (await isFresh(target, stats.mtimeMs)) {
+        continue;
+      }
+      await sharp(buffer)
+        .rotate()
+        .resize({ width: size.maxEdge, height: size.maxEdge, fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: size.quality, mozjpeg: true })
+        .toFile(target);
+    }
 
     preparedPhotos.push({
       id: slug,
       file,
+      hash: createHash("sha1").update(buffer).digest("hex"),
       capturedAt: capturedDate.toISOString(),
       capturedTimestamp: capturedDate.getTime(),
-      src: `photos/small/${smallName}`,
-      srcLarge: `photos/large/${largeName}`,
-      width: metadata.width,
-      height: metadata.height,
-      aspect: Number((metadata.width / metadata.height).toFixed(4)),
-      orientation,
-      monthId: monthParts.monthId,
-      monthLabel: monthParts.monthLabel,
+      ...paths,
+      width,
+      height,
+      aspect: Number((width / height).toFixed(4)),
+      orientation: width >= height ? "landscape" : "portrait",
       albumId,
       albumLabel,
-      isBest: albumId === "best",
+      countryCode,
       isCover: isCoverFile(file),
     });
+  }
+
+  // A ring photo is a copy of a country photo; point it at the original so the
+  // viewer can say where it was taken, and so likes are shared between the two.
+  const byHash = new Map(
+    preparedPhotos.filter((photo) => photo.albumId !== RING_ALBUM_ID).map((photo) => [photo.hash, photo]),
+  );
+  for (const photo of preparedPhotos) {
+    if (photo.albumId !== RING_ALBUM_ID) {
+      continue;
+    }
+    const original = byHash.get(photo.hash);
+    photo.originalId = original?.id ?? null;
+    photo.countryLabel = original?.albumLabel ?? null;
+    photo.countryCode = original?.countryCode ?? null;
   }
 
   preparedPhotos.sort(
     (left, right) => right.capturedTimestamp - left.capturedTimestamp || left.file.localeCompare(right.file),
   );
 
-  const manifest = preparedPhotos.map(({ file, capturedTimestamp, ...photo }, index) => ({
-    ...photo,
-    order: index,
-    alt: `Photograph ${String(index + 1).padStart(2, "0")}, ${photo.orientation} composition from the Project Photography collection.`,
-    label: toLabel(index, photo.orientation),
-  }));
+  const manifest = preparedPhotos.map(({ file, hash, capturedTimestamp, countryLabel, ...photo }, index) => {
+    const country = photo.albumId === RING_ALBUM_ID ? countryLabel : photo.albumLabel;
+    return {
+      ...photo,
+      country: country ?? null,
+      order: index,
+      alt: country ? `Photograph taken in ${country}` : "Photograph",
+    };
+  });
 
-  const contents = `/** @typedef {{ id: string, order: number, capturedAt: string, src: string, srcLarge: string, width: number, height: number, aspect: number, orientation: "portrait" | "landscape", monthId: string, monthLabel: string, albumId: string, albumLabel: string, isBest: boolean, isCover: boolean, alt: string, label: string }} PhotoAsset */\n\n/** @type {PhotoAsset[]} */\nexport const photoManifest = ${JSON.stringify(manifest, null, 2)};\n`;
+  // Outputs of photos that were removed or renamed since the last run.
+  let removed = 0;
+  for (const size of sizes) {
+    for (const name of await fs.readdir(size.dir)) {
+      const target = path.join(size.dir, name);
+      if (!written.has(target)) {
+        await fs.rm(target);
+        removed += 1;
+      }
+    }
+  }
+
+  const contents = `/** @typedef {{ id: string, order: number, capturedAt: string, thumb: string, src: string, srcLarge: string, width: number, height: number, aspect: number, orientation: "portrait" | "landscape", albumId: string, albumLabel: string, country: string | null, countryCode: string | null, originalId?: string | null, isCover: boolean, alt: string }} PhotoAsset */\n\n/** @type {PhotoAsset[]} */\nexport const photoManifest = ${JSON.stringify(manifest, null, 2)};\n`;
   await fs.writeFile(manifestFile, contents, "utf8");
 
-  console.log(`Prepared ${manifest.length} photos into public/photos and updated src/generated/photos.js`);
+  console.log(
+    `Prepared ${manifest.length} photos into public/photos${removed ? ` (${removed} stale files removed)` : ""} and updated src/generated/photos.js`,
+  );
 }
 
 prepare().catch((error) => {
