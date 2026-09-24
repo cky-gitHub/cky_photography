@@ -63,33 +63,44 @@ a {
 
 /* ── top bar ─────────────────────────────────────────────────────────────── */
 
+/* Same stand-in wordmark as the main site: Newsreader (SIL OFL), self-hosted. */
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/newsreader-latin.woff2") format("woff2");
+}
+
 .topbar {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  z-index: 5;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 24px var(--gutter);
-  font-size: 0.78rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  z-index: 20;
+  padding: 16px 24px;
 }
 
 .topbar__home {
-  text-decoration: none;
-  font-weight: 500;
+  display: block;
+  padding: 8px 0;
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.14em;
   color: var(--text);
+  text-decoration: none;
+  /* Stays readable when a photo scrolls underneath it. */
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7);
+  transition: color 160ms ease;
 }
 
 .topbar__home:hover {
   color: var(--accent);
 }
 
-.topbar__divider,
-.topbar__section {
-  color: var(--faint);
+html.is-viewing .topbar {
+  visibility: hidden;
 }
 
 /* ── hero ────────────────────────────────────────────────────────────────── */
